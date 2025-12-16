@@ -9,8 +9,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        primary: "#0F4C5C", // Deep Teal
+        secondary: {
+          DEFAULT: "#FFC107", // Sunrise Yellow
+          foreground: "#000000",
+        },
+        success: "#10B981", // Emerald Green
+        error: "#EF4444", // Alert Red
+        background: "#F8FAFC", // Off-White
+      },
+      fontFamily: {
+        sans: ["var(--font-inter)"],
       },
     },
   },
