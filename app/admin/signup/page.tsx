@@ -114,9 +114,10 @@ export default function SignupPage() {
             if (data.user) {
                 setIsSubmitted(true);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Signup error:", err);
-            setError(err.message || t.signup.errors.default);
+            const message = err instanceof Error ? err.message : t.signup.errors.default;
+            setError(message);
         } finally {
             setIsLoading(false);
         }
