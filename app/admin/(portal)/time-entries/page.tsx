@@ -532,580 +532,470 @@ export default function AttendanceLogsPage() {
             }
             return null;
         }).filter(Boolean) as any[];
-        // Only return if actually late/absent based on their specific time
-        if (isLate) {
-            return { ...emp, expectedStart };
-        }
-        return null;
-    }).filter(Boolean) as any[];
 
-    // 3. ANOMALIES (Past Missing Checkout)
-    // Group logs by Employee -> Day (excluding today)
-    // If the LAST action of a past day is IN, it matches the anomaly criteria.
-    const anomalyList: { employee_id: string, date: string, last_log: Log }[] = [];
-    const logsByEmpDate: Record<string, Log[]> = {};
 
-    logs.forEach(log => {
-        const d = new Date(log.timestamp);
-        // Skip today
-        if (d.getTime() >= startOfToday) return;
+        // 3. ANOMALIES (Past Missing Checkout)
+        // Group logs by Employee -> Day (excluding today)
+        // If the LAST action of a past day is IN, it matches the anomaly criteria.
+        const anomalyList: { employee_id: string, date: string, last_log: Log }[] = [];
+        const logsByEmpDate: Record<string, Log[]> = {};
 
-        const dateKey = d.toISOString().split('T')[0];
-        const key = `${log.employee_id}_${dateKey}`;
+        logs.forEach(log => {
+            const d = new Date(log.timestamp);
+            // Skip today
+            if (d.getTime() >= startOfToday) return;
 
-        if (!logsByEmpDate[key]) logsByEmpDate[key] = [];
-        logsByEmpDate[key].push(log);
-    });
+            const dateKey = d.toISOString().split('T')[0];
+            const key = `${log.employee_id}_${dateKey}`;
 
-    // Analyze each day group
-    Object.entries(logsByEmpDate).forEach(([key, dayLogs]) => {
-        // dayLogs are descending. The first one is the "last action" of that day.
-        const lastAction = dayLogs[0];
-        if (lastAction.type === 'IN') {
-            // Anomaly Found
-            const [empId, dateStr] = key.split('_');
-            anomalyList.push({
-                employee_id: empId,
-                date: dateStr,
-                last_log: lastAction
-            });
-        }
-    });
-
-    return {
-        stats: {
-            totalEmployees: activeEmployees.length,
-            activeToday: uniqueEmployeesToday.size,
-            currentlyOnSite: onSiteCount,
-            offlineSyncs: offlineCount
-        },
-        anomalies: anomalyList,
-        absences: absenceList
-    };
-}) ();
-
-const handleQuickFix = async (anomaly: { employee_id: string, date: string, last_log: Log }) => {
-    if (!organizationId) return;
-    const confirmFix = window.confirm(`Fix ${anomaly.last_log.employee?.first_name || 'Employee'}'s missing checkout for ${anomaly.date} by setting it to 18:00?`);
-    if (!confirmFix) return;
-
-    // Auto-create checkout at 18:00
-    const fixDate = anomaly.date;
-    const fixTime = "18:00:00";
-    const fullTimestamp = new Date(`${fixDate}T${fixTime}`).toISOString();
-
-    const { error } = await supabase
-        .from('attendance_logs')
-        .insert({
-            organization_id: organizationId,
-            employee_id: anomaly.employee_id,
-            site_id: (anomaly.last_log as any).site_id, // Use same site
-            type: 'CHECK_OUT',
-            timestamp: fullTimestamp,
-            is_manual_entry: true,
-            correction_reason: "Smart Fix: Forgot to clock out",
-            is_offline_sync: false,
-            kiosk_id: null
+            if (!logsByEmpDate[key]) logsByEmpDate[key] = [];
+            logsByEmpDate[key].push(log);
         });
 
-    if (error) {
-        alert("Error fixing anomaly");
-        console.error(error);
-    } else {
-        // Refresh
-        fetchLogs(organizationId);
-    }
-};
+        // Analyze each day group
+        Object.entries(logsByEmpDate).forEach(([key, dayLogs]) => {
+            // dayLogs are descending. The first one is the "last action" of that day.
+            const lastAction = dayLogs[0];
+            if (lastAction.type === 'IN') {
+                // Anomaly Found
+                const [empId, dateStr] = key.split('_');
+                anomalyList.push({
+                    employee_id: empId,
+                    date: dateStr,
+                    last_log: lastAction
+                });
+            }
+        });
 
-// --- LOCK / VALIDATION LOGIC ---
+        return {
+            stats: {
+                totalEmployees: activeEmployees.length,
+                activeToday: uniqueEmployeesToday.size,
+                currentlyOnSite: onSiteCount,
+                offlineSyncs: offlineCount
+            },
+            anomalies: anomalyList,
+            absences: absenceList
+        };
+    })();
 
-const checkLockStatus = async () => {
-    if (!organizationId) return;
-    const { start, end } = getFilterRange();
+    const handleQuickFix = async (anomaly: { employee_id: string, date: string, last_log: Log }) => {
+        if (!organizationId) return;
+        const confirmFix = window.confirm(`Fix ${anomaly.last_log.employee?.first_name || 'Employee'}'s missing checkout for ${anomaly.date} by setting it to 18:00?`);
+        if (!confirmFix) return;
 
-    // Find if a LOCKED period covers this range
-    const { data } = await supabase.from('payroll_periods')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .in('status', ['LOCKED', 'PAID'])
-        .lte('start_date', start.toISOString())
-        .gte('end_date', end.toISOString())
-        .maybeSingle();
+        // Auto-create checkout at 18:00
+        const fixDate = anomaly.date;
+        const fixTime = "18:00:00";
+        const fullTimestamp = new Date(`${fixDate}T${fixTime}`).toISOString();
 
-    setIsPeriodLocked(!!data);
-};
+        const { error } = await supabase
+            .from('attendance_logs')
+            .insert({
+                organization_id: organizationId,
+                employee_id: anomaly.employee_id,
+                site_id: (anomaly.last_log as any).site_id, // Use same site
+                type: 'CHECK_OUT',
+                timestamp: fullTimestamp,
+                is_manual_entry: true,
+                correction_reason: "Smart Fix: Forgot to clock out",
+                is_offline_sync: false,
+                kiosk_id: null
+            });
 
-useEffect(() => {
-    checkLockStatus();
-}, [dateFilter, customStartDate, customEndDate, organizationId]);
-
-const handleValidatePeriod = async () => {
-    if (!confirm(t.dashboard?.confirmLock || "Confirm Lock?")) return;
-    if (!organizationId) return;
-
-    const { start, end } = getFilterRange();
-    const startStr = start.toISOString().split('T')[0];
-    const endStr = end.toISOString().split('T')[0];
-
-    const { error } = await supabase.from('payroll_periods').insert({
-        organization_id: organizationId,
-        name: `Period ${start.toLocaleDateString()} - ${end.toLocaleDateString()}`,
-        start_date: startStr,
-        end_date: endStr,
-        status: 'LOCKED',
-        locked_at: new Date().toISOString()
-    });
-
-    if (error) {
-        console.error(error);
-        alert("Error locking period");
-    } else {
-        setIsPeriodLocked(true);
-    }
-};
-
-
-const handleExport = () => {
-    import('xlsx').then(XLSX => {
-        if (view === 'timesheets') {
-            // Timesheet Smart Export
-            const dataToExport = timesheetData.map(item => ({
-                [t.dashboard?.timesheet?.date || "Date"]: item.date.toLocaleDateString(),
-                [t.dashboard?.timesheet?.employee || "Employee"]: item.employeeName,
-                "Job Title": item.jobTitle || "",
-                [t.dashboard?.timesheet?.firstIn || "Start"]: item.firstIn?.toLocaleTimeString() || "",
-                [t.dashboard?.timesheet?.lastOut || "End"]: item.lastOut?.toLocaleTimeString() || "",
-                "Break Deduction": item.breakDeduction > 0 ? `${item.breakDeduction}m` : "",
-                [t.dashboard?.timesheet?.total || "Total Worked"]: item.durationStr,
-                [t.dashboard?.timesheet?.overtime || "Overtime"]: item.overtimeStr || "",
-            }));
-
-            const ws = XLSX.utils.json_to_sheet(dataToExport);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Timesheets");
-            XLSX.writeFile(wb, `timesheets_${new Date().toISOString().split('T')[0]}.xlsx`);
-
-        } else if (view === 'reports') {
-            // Reports Export
-            const dataToExport = reportData.map(item => ({
-                [t.dashboard?.report?.employee || "Employee"]: item.name,
-                "Job Title": item.job,
-                [t.dashboard?.report?.daysWorked || "Days Worked"]: item.days,
-                [t.dashboard?.report?.totalHours || "Total Hours"]: item.totalStr,
-                [t.dashboard?.report?.totalOvertime || "Total Overtime"]: item.overtimeStr
-            }));
-            const ws = XLSX.utils.json_to_sheet(dataToExport);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Synthesis");
-            XLSX.writeFile(wb, `synthesis_${new Date().toISOString().split('T')[0]}.xlsx`);
-
+        if (error) {
+            alert("Error fixing anomaly");
+            console.error(error);
         } else {
-            // Standard Logs Export
-            const dataToExport = filteredLogs.map(log => ({
-                Employee: log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : "Unknown",
-                Type: log.type === 'IN' ? 'Clock In' : 'Clock Out',
-                Date: new Date(log.timestamp).toLocaleDateString(),
-                Time: new Date(log.timestamp).toLocaleTimeString(),
-                Site: log.site?.name || "N/A",
-                Source: log.kiosk?.name || "Manual",
-                "Is Manual": log.is_manual_entry ? "Yes" : "No",
-                "Reason": log.correction_reason || "",
-                "Offline Sync": !log.is_manual_entry && (Math.abs(new Date(log.created_at).getTime() - new Date(log.timestamp).getTime()) / 60000 > 5) ? "Yes" : "No"
-            }));
-
-            const ws = XLSX.utils.json_to_sheet(dataToExport);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Attendance Logs");
-            XLSX.writeFile(wb, `attendance_logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+            // Refresh
+            fetchLogs(organizationId);
         }
-    });
-};
+    };
 
-return (
-    <div className="space-y-6">
+    // --- LOCK / VALIDATION LOGIC ---
 
-        <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
-            <div>
-                <h1 className="text-2xl font-bold text-[#0F4C5C]">{t.dashboard?.title || "Time Entries"}</h1>
-                <p className="text-sm text-slate-500">{t.dashboard?.subtitle || "Track, edit, and validate attendance."}</p>
-            </div>
-            <div className="flex gap-2">
-                {/* VALIDATION BUTTON */}
-                {isPeriodLocked ? (
-                    <div className="bg-slate-100 text-slate-500 border border-slate-200 px-3 py-2 rounded-lg font-bold flex items-center gap-2 text-sm cursor-not-allowed">
-                        <Lock className="h-4 w-4" /> {t.dashboard?.periodLocked || "Period Locked"}
-                    </div>
-                ) : (
+    const checkLockStatus = async () => {
+        if (!organizationId) return;
+        const { start, end } = getFilterRange();
+
+        // Find if a LOCKED period covers this range
+        const { data } = await supabase.from('payroll_periods')
+            .select('id')
+            .eq('organization_id', organizationId)
+            .in('status', ['LOCKED', 'PAID'])
+            .lte('start_date', start.toISOString())
+            .gte('end_date', end.toISOString())
+            .maybeSingle();
+
+        setIsPeriodLocked(!!data);
+    };
+
+    useEffect(() => {
+        checkLockStatus();
+    }, [dateFilter, customStartDate, customEndDate, organizationId]);
+
+    const handleValidatePeriod = async () => {
+        if (!confirm(t.dashboard?.confirmLock || "Confirm Lock?")) return;
+        if (!organizationId) return;
+
+        const { start, end } = getFilterRange();
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
+
+        const { error } = await supabase.from('payroll_periods').insert({
+            organization_id: organizationId,
+            name: `Period ${start.toLocaleDateString()} - ${end.toLocaleDateString()}`,
+            start_date: startStr,
+            end_date: endStr,
+            status: 'LOCKED',
+            locked_at: new Date().toISOString()
+        });
+
+        if (error) {
+            console.error(error);
+            alert("Error locking period");
+        } else {
+            setIsPeriodLocked(true);
+        }
+    };
+
+
+    const handleExport = () => {
+        import('xlsx').then(XLSX => {
+            if (view === 'timesheets') {
+                // Timesheet Smart Export
+                const dataToExport = timesheetData.map(item => ({
+                    [t.dashboard?.timesheet?.date || "Date"]: item.date.toLocaleDateString(),
+                    [t.dashboard?.timesheet?.employee || "Employee"]: item.employeeName,
+                    "Job Title": item.jobTitle || "",
+                    [t.dashboard?.timesheet?.firstIn || "Start"]: item.firstIn?.toLocaleTimeString() || "",
+                    [t.dashboard?.timesheet?.lastOut || "End"]: item.lastOut?.toLocaleTimeString() || "",
+                    "Break Deduction": item.breakDeduction > 0 ? `${item.breakDeduction}m` : "",
+                    [t.dashboard?.timesheet?.total || "Total Worked"]: item.durationStr,
+                    [t.dashboard?.timesheet?.overtime || "Overtime"]: item.overtimeStr || "",
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Timesheets");
+                XLSX.writeFile(wb, `timesheets_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+            } else if (view === 'reports') {
+                // Reports Export
+                const dataToExport = reportData.map(item => ({
+                    [t.dashboard?.report?.employee || "Employee"]: item.name,
+                    "Job Title": item.job,
+                    [t.dashboard?.report?.daysWorked || "Days Worked"]: item.days,
+                    [t.dashboard?.report?.totalHours || "Total Hours"]: item.totalStr,
+                    [t.dashboard?.report?.totalOvertime || "Total Overtime"]: item.overtimeStr
+                }));
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Synthesis");
+                XLSX.writeFile(wb, `synthesis_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+            } else {
+                // Standard Logs Export
+                const dataToExport = filteredLogs.map(log => ({
+                    Employee: log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : "Unknown",
+                    Type: log.type === 'IN' ? 'Clock In' : 'Clock Out',
+                    Date: new Date(log.timestamp).toLocaleDateString(),
+                    Time: new Date(log.timestamp).toLocaleTimeString(),
+                    Site: log.site?.name || "N/A",
+                    Source: log.kiosk?.name || "Manual",
+                    "Is Manual": log.is_manual_entry ? "Yes" : "No",
+                    "Reason": log.correction_reason || "",
+                    "Offline Sync": !log.is_manual_entry && (Math.abs(new Date(log.created_at).getTime() - new Date(log.timestamp).getTime()) / 60000 > 5) ? "Yes" : "No"
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Attendance Logs");
+                XLSX.writeFile(wb, `attendance_logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+            }
+        });
+    };
+
+    return (
+        <div className="space-y-6">
+
+            <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-[#0F4C5C]">{t.dashboard?.title || "Time Entries"}</h1>
+                    <p className="text-sm text-slate-500">{t.dashboard?.subtitle || "Track, edit, and validate attendance."}</p>
+                </div>
+                <div className="flex gap-2">
+                    {/* VALIDATION BUTTON */}
+                    {isPeriodLocked ? (
+                        <div className="bg-slate-100 text-slate-500 border border-slate-200 px-3 py-2 rounded-lg font-bold flex items-center gap-2 text-sm cursor-not-allowed">
+                            <Lock className="h-4 w-4" /> {t.dashboard?.periodLocked || "Period Locked"}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleValidatePeriod}
+                            className="bg-slate-800 text-white px-3 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-slate-900 text-sm shadow-sm transition-colors"
+                        >
+                            <CheckCircle className="h-4 w-4" /> {t.dashboard?.validatePeriod || "Validate Period"}
+                        </button>
+                    )}
+
                     <button
-                        onClick={handleValidatePeriod}
-                        className="bg-slate-800 text-white px-3 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-slate-900 text-sm shadow-sm transition-colors"
+                        onClick={handleExport}
+                        className="border border-slate-300 bg-white text-slate-700 px-3 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-slate-50 text-sm"
                     >
-                        <CheckCircle className="h-4 w-4" /> {t.dashboard?.validatePeriod || "Validate Period"}
+                        <Download className="h-4 w-4" /> {t.dashboard?.exportExcel || "Export Excel"}
                     </button>
+                    <button
+                        onClick={() => {
+                            // Set default date/time
+                            const now = new Date();
+                            setManualForm(prev => ({
+                                ...prev,
+                                date: now.toISOString().split('T')[0],
+                                time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) // HH:MM
+                            }));
+                            setIsManualEntryModalOpen(true);
+                        }}
+                        className="bg-[#FFC107] text-[#0F4C5C] px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm hover:bg-[#e6ad06] text-sm"
+                    >
+                        <Plus className="h-5 w-5" /> {t.dashboard?.manualEntry || "Manual Entry"}
+                    </button>
+                </div>
+            </div>
+
+            {/* ERROR / ANOMALIES & ABSENCES */}
+            <div className="space-y-4">
+                {anomalies.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                            <div className="flex-1">
+                                <h3 className="font-bold text-red-800 text-sm mb-1">
+                                    {anomalies.length} {anomalies.length > 1 ? (t.dashboard?.anomaliesTitle || "Anomalies Détectées") : "Anomalie Détectée"}
+                                </h3>
+                                <p className="text-xs text-red-600 mb-3">{t.dashboard?.anomaliesDesc || "The following employees forgot to clock out on previous days."}</p>
+
+                                <div className="space-y-2">
+                                    {anomalies.map((anomaly, idx) => (
+                                        <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-red-100 shadow-sm">
+                                            <div className="text-sm">
+                                                <span className="font-bold text-slate-800">{anomaly.last_log.employee?.first_name} {anomaly.last_log.employee?.last_name}</span>
+                                                <span className="text-slate-500 mx-2">•</span>
+                                                <span className="text-slate-600">{new Date(anomaly.date).toLocaleDateString()}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleQuickFix(anomaly)}
+                                                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-bold hover:bg-red-200 transition-colors"
+                                            >
+                                                {t.dashboard?.fixBtn || "Fix (Set 18:00)"}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
-                <button
-                    onClick={handleExport}
-                    className="border border-slate-300 bg-white text-slate-700 px-3 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-slate-50 text-sm"
-                >
-                    <Download className="h-4 w-4" /> {t.dashboard?.exportExcel || "Export Excel"}
-                </button>
-                <button
-                    onClick={() => {
-                        // Set default date/time
-                        const now = new Date();
-                        setManualForm(prev => ({
-                            ...prev,
-                            date: now.toISOString().split('T')[0],
-                            time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) // HH:MM
-                        }));
-                        setIsManualEntryModalOpen(true);
-                    }}
-                    className="bg-[#FFC107] text-[#0F4C5C] px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm hover:bg-[#e6ad06] text-sm"
-                >
-                    <Plus className="h-5 w-5" /> {t.dashboard?.manualEntry || "Manual Entry"}
-                </button>
-            </div>
-        </div>
+                {/* ABSENCES BANNER (Daily) */}
+                {absences.length > 0 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-3">
+                        <div className="flex items-start gap-3">
+                            <Clock className="h-5 w-5 text-orange-600 mt-0.5" />
+                            <div className="flex-1">
+                                <h3 className="font-bold text-orange-800 text-sm mb-1">
+                                    {absences.length} {absences.length > 1 ? (t.dashboard?.absencesTitle || "Employés Absents") : "Employé Absent"}
+                                </h3>
+                                <p className="text-xs text-orange-600 mb-3">{t.dashboard?.absencesDesc || "La journée a commencé. Ces employés n'ont pas encore pointé."}</p>
 
-        {/* ERROR / ANOMALIES & ABSENCES */}
-        <div className="space-y-4">
-            {anomalies.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-start gap-3">
-                        <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
-                        <div className="flex-1">
-                            <h3 className="font-bold text-red-800 text-sm mb-1">
-                                {anomalies.length} {anomalies.length > 1 ? (t.dashboard?.anomaliesTitle || "Anomalies Détectées") : "Anomalie Détectée"}
-                            </h3>
-                            <p className="text-xs text-red-600 mb-3">{t.dashboard?.anomaliesDesc || "The following employees forgot to clock out on previous days."}</p>
-
-                            <div className="space-y-2">
-                                {anomalies.map((anomaly, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-red-100 shadow-sm">
-                                        <div className="text-sm">
-                                            <span className="font-bold text-slate-800">{anomaly.last_log.employee?.first_name} {anomaly.last_log.employee?.last_name}</span>
-                                            <span className="text-slate-500 mx-2">•</span>
-                                            <span className="text-slate-600">{new Date(anomaly.date).toLocaleDateString()}</span>
-                                        </div>
-                                        <button
-                                            onClick={() => handleQuickFix(anomaly)}
-                                            className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-bold hover:bg-red-200 transition-colors"
-                                        >
-                                            {t.dashboard?.fixBtn || "Fix (Set 18:00)"}
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ABSENCES BANNER (Daily) */}
-            {absences.length > 0 && (
-                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-3">
-                    <div className="flex items-start gap-3">
-                        <Clock className="h-5 w-5 text-orange-600 mt-0.5" />
-                        <div className="flex-1">
-                            <h3 className="font-bold text-orange-800 text-sm mb-1">
-                                {absences.length} {absences.length > 1 ? (t.dashboard?.absencesTitle || "Employés Absents") : "Employé Absent"}
-                            </h3>
-                            <p className="text-xs text-orange-600 mb-3">{t.dashboard?.absencesDesc || "La journée a commencé. Ces employés n'ont pas encore pointé."}</p>
-
-                            <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
-                                {absences.map((emp, idx) => (
-                                    <div key={emp.id} className="flex items-center justify-between bg-white p-2 rounded border border-orange-100 shadow-sm">
-                                        <div className="text-sm flex items-center gap-2">
-                                            <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                                {emp.first_name?.[0]}{emp.last_name?.[0]}
+                                <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                                    {absences.map((emp, idx) => (
+                                        <div key={emp.id} className="flex items-center justify-between bg-white p-2 rounded border border-orange-100 shadow-sm">
+                                            <div className="text-sm flex items-center gap-2">
+                                                <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                                    {emp.first_name?.[0]}{emp.last_name?.[0]}
+                                                </div>
+                                                <span className="font-bold text-slate-800">{emp.first_name} {emp.last_name}</span>
+                                                <span className="text-xs text-slate-400">{emp.job_title} • Attendu à {emp.expectedStart}</span>
                                             </div>
-                                            <span className="font-bold text-slate-800">{emp.first_name} {emp.last_name}</span>
-                                            <span className="text-xs text-slate-400">{emp.job_title} • Attendu à {emp.expectedStart}</span>
+                                            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">
+                                                {t.dashboard?.absentTag || "Absent"}
+                                            </span>
                                         </div>
-                                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">
-                                            {t.dashboard?.absentTag || "Absent"}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            </div >
                         </div >
                     </div >
-                </div >
-            )
-            }
-        </div >
-
-        {/* 0. STATS WIDGET */}
-        < div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" >
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                <div className="bg-purple-100 p-3 rounded-full text-purple-600">
-                    <Users size={24} />
-                </div>
-                <div>
-                    <div className="text-2xl font-bold text-slate-800">{stats.totalEmployees}</div>
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.dashboard?.totalEmployees || "Total Employees"}</div>
-                </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                <div className="bg-emerald-100 p-3 rounded-full text-emerald-600">
-                    <MapPin size={24} />
-                </div>
-                <div>
-                    <div className="text-2xl font-bold text-slate-800">{stats.currentlyOnSite}</div>
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.dashboard?.onSite || "Currently On Site"}</div>
-                </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                <div className="bg-blue-100 p-3 rounded-full text-blue-600">
-                    <UserCheck size={24} />
-                </div>
-                <div>
-                    <div className="text-2xl font-bold text-slate-800">{stats.activeToday}</div>
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.dashboard?.activeToday || "Active Today"}</div>
-                </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                <div className="bg-amber-100 p-3 rounded-full text-amber-600">
-                    <CloudOff size={24} />
-                </div>
-                <div>
-                    <div className="text-2xl font-bold text-slate-800">{stats.offlineSyncs}</div>
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.dashboard?.offlineSyncs || "Offline Syncs"}</div>
-                </div>
-            </div>
-        </div >
-
-        {/* 1.5 VIEW TOGGLE */}
-        < div className="flex justify-end mb-4" >
-            <div className="bg-slate-100 p-1 rounded-lg flex items-center">
-                <button
-                    onClick={() => setView('logs')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${view === 'logs' ? 'bg-white text-[#0F4C5C] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    {t.dashboard?.view?.logs || "Logs"}
-                </button>
-                <button
-                    onClick={() => setView('timesheets')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${view === 'timesheets' ? 'bg-white text-[#0F4C5C] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    {t.dashboard?.view?.timesheets || "Timesheets"}
-                </button>
-                <button
-                    onClick={() => setView('reports')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${view === 'reports' ? 'bg-white text-[#0F4C5C] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    {t.dashboard?.view?.reports || "Reports"}
-                </button>
-            </div>
-        </div >
-
-        {/* 2. FILTERS */}
-        < div className="flex flex-wrap gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm" >
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded border border-slate-200 w-full sm:w-auto">
-                <Search className="h-4 w-4 text-slate-400" />
-                <input
-                    type="text"
-                    placeholder={t.dashboard?.filters?.searchPlaceholder || "Search employee..."}
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="bg-transparent text-sm outline-none w-full"
-                />
-            </div>
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded border border-slate-200 cursor-pointer hover:border-[#0F4C5C]">
-                <Calendar className="h-4 w-4 text-slate-500" />
-                <select
-                    value={dateFilter}
-                    onChange={(e) => setDateFilter(e.target.value as any)}
-                    className="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer"
-                >
-                    <option value="today">{t.dashboard?.filters?.date?.today || "Today"}</option>
-                    <option value="yesterday">{t.dashboard?.filters?.date?.yesterday || "Yesterday"}</option>
-                    <option value="week">{t.dashboard?.filters?.date?.week || "This Week"}</option>
-                    <option value="last_week">{t.dashboard?.filters?.date?.lastWeek || "Last Week"}</option>
-                    <option value="month">{t.dashboard?.filters?.date?.month || "This Month"}</option>
-                    <option value="custom">{t.dashboard?.filters?.date?.custom || "Custom Range"}</option>
-                </select>
-            </div>
-
-            {
-                dateFilter === 'custom' && (
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="date"
-                            value={customStartDate}
-                            onChange={(e) => setCustomStartDate(e.target.value)}
-                            className="bg-slate-50 px-3 py-2 rounded border border-slate-200 text-sm outline-none focus:border-[#0F4C5C]"
-                        />
-                        <span className="text-slate-400">-</span>
-                        <input
-                            type="date"
-                            value={customEndDate}
-                            onChange={(e) => setCustomEndDate(e.target.value)}
-                            className="bg-slate-50 px-3 py-2 rounded border border-slate-200 text-sm outline-none focus:border-[#0F4C5C]"
-                        />
-                    </div>
                 )
-            }
+                }
+            </div >
 
-            <select
-                value={filterSite}
-                onChange={e => setFilterSite(e.target.value)}
-                className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded border border-slate-200 cursor-pointer hover:border-[#0F4C5C] text-sm font-medium text-slate-700 outline-none"
-            >
-                <option value="all">{t.dashboard?.filters?.allSites || "All sites"}</option>
-                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-        </div >
-
-        {/* 3. LOGS TABLE OR TIMESHEETS */}
-        {
-            view === 'timesheets' ? (
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.date || "Date"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.employee || "Employee"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.firstIn || "Start"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.lastOut || "End"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">{t.dashboard?.timesheet?.total || "Total Worked"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">{t.dashboard?.timesheet?.overtime || "Overtime"}</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {timesheetData.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-slate-500">No active timesheets for this period.</td></tr>
-                            ) : timesheetData.map(item => (
-                                <tr key={item.key} className="hover:bg-slate-50 transition-colors">
-                                    <td className="p-4 font-medium text-slate-700">{item.date.toLocaleDateString()}</td>
-                                    <td className="p-4">
-                                        <div className="font-bold text-slate-900">{item.employeeName}</div>
-                                        <div className="text-xs text-slate-500">{item.jobTitle}</div>
-                                    </td>
-                                    <td className="p-4 text-slate-600 font-mono text-xs">{item.firstIn?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
-                                    <td className="p-4 text-slate-600 font-mono text-xs">{item.lastOut?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
-                                    <td className="p-4 text-right">
-                                        <div className="font-bold text-slate-900 font-mono">{item.durationStr}</div>
-                                        {item.breakDeduction > 0 && (
-                                            <div className="text-xs text-amber-600 font-medium">(-{item.breakDeduction}m pause)</div>
-                                        )}
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        {item.overtimeMinutes > 0 ? (
-                                            <span className="bg-green-100 text-green-700 font-bold px-2 py-1 rounded text-xs">
-                                                {item.overtimeStr}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-300">-</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            ) : view === 'reports' ? (
-                <div className="space-y-6">
-                    {/* SUMMARY CARDS */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* TOTAL HOURS */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                                <Clock className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <div className="text-sm text-slate-500 font-medium">{t.dashboard?.report?.totalHours || "Total Heures"}</div>
-                                <div className="text-2xl font-bold text-slate-900">
-                                    {(() => {
-                                        const totalM = Math.round(reportData.reduce((acc, curr) => acc + curr.totalMin, 0));
-                                        const h = Math.floor(totalM / 60);
-                                        const m = Math.floor(totalM % 60);
-                                        return `${h}h${m.toString().padStart(2, '0')}`;
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* TOTAL OVERTIME */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                                <AlertCircle className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <div className="text-sm text-slate-500 font-medium">{t.dashboard?.report?.totalOvertime || "Heures Sup."}</div>
-                                <div className="text-2xl font-bold text-slate-900">
-                                    {(() => {
-                                        const totalM = Math.round(reportData.reduce((acc, curr) => acc + curr.overtimeMin, 0));
-                                        const h = Math.floor(totalM / 60);
-                                        const m = Math.floor(totalM % 60);
-                                        return `${h}h${m.toString().padStart(2, '0')}`;
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ACTIVE EMPLOYEES */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                <Users className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <div className="text-sm text-slate-500 font-medium">Effectif Actif</div>
-                                <div className="text-2xl font-bold text-slate-900">
-                                    {reportData.length}
-                                </div>
-                            </div>
-                        </div>
+            {/* 0. STATS WIDGET */}
+            < div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" >
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div className="bg-purple-100 p-3 rounded-full text-purple-600">
+                        <Users size={24} />
                     </div>
+                    <div>
+                        <div className="text-2xl font-bold text-slate-800">{stats.totalEmployees}</div>
+                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.dashboard?.totalEmployees || "Total Employees"}</div>
+                    </div>
+                </div>
 
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div className="bg-emerald-100 p-3 rounded-full text-emerald-600">
+                        <MapPin size={24} />
+                    </div>
+                    <div>
+                        <div className="text-2xl font-bold text-slate-800">{stats.currentlyOnSite}</div>
+                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.dashboard?.onSite || "Currently On Site"}</div>
+                    </div>
+                </div>
 
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div className="bg-blue-100 p-3 rounded-full text-blue-600">
+                        <UserCheck size={24} />
+                    </div>
+                    <div>
+                        <div className="text-2xl font-bold text-slate-800">{stats.activeToday}</div>
+                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.dashboard?.activeToday || "Active Today"}</div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div className="bg-amber-100 p-3 rounded-full text-amber-600">
+                        <CloudOff size={24} />
+                    </div>
+                    <div>
+                        <div className="text-2xl font-bold text-slate-800">{stats.offlineSyncs}</div>
+                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t.dashboard?.offlineSyncs || "Offline Syncs"}</div>
+                    </div>
+                </div>
+            </div >
+
+            {/* 1.5 VIEW TOGGLE */}
+            < div className="flex justify-end mb-4" >
+                <div className="bg-slate-100 p-1 rounded-lg flex items-center">
+                    <button
+                        onClick={() => setView('logs')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${view === 'logs' ? 'bg-white text-[#0F4C5C] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        {t.dashboard?.view?.logs || "Logs"}
+                    </button>
+                    <button
+                        onClick={() => setView('timesheets')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${view === 'timesheets' ? 'bg-white text-[#0F4C5C] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        {t.dashboard?.view?.timesheets || "Timesheets"}
+                    </button>
+                    <button
+                        onClick={() => setView('reports')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${view === 'reports' ? 'bg-white text-[#0F4C5C] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        {t.dashboard?.view?.reports || "Reports"}
+                    </button>
+                </div>
+            </div >
+
+            {/* 2. FILTERS */}
+            < div className="flex flex-wrap gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm" >
+                <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded border border-slate-200 w-full sm:w-auto">
+                    <Search className="h-4 w-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder={t.dashboard?.filters?.searchPlaceholder || "Search employee..."}
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="bg-transparent text-sm outline-none w-full"
+                    />
+                </div>
+                <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded border border-slate-200 cursor-pointer hover:border-[#0F4C5C]">
+                    <Calendar className="h-4 w-4 text-slate-500" />
+                    <select
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value as any)}
+                        className="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer"
+                    >
+                        <option value="today">{t.dashboard?.filters?.date?.today || "Today"}</option>
+                        <option value="yesterday">{t.dashboard?.filters?.date?.yesterday || "Yesterday"}</option>
+                        <option value="week">{t.dashboard?.filters?.date?.week || "This Week"}</option>
+                        <option value="last_week">{t.dashboard?.filters?.date?.lastWeek || "Last Week"}</option>
+                        <option value="month">{t.dashboard?.filters?.date?.month || "This Month"}</option>
+                        <option value="custom">{t.dashboard?.filters?.date?.custom || "Custom Range"}</option>
+                    </select>
+                </div>
+
+                {
+                    dateFilter === 'custom' && (
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                value={customStartDate}
+                                onChange={(e) => setCustomStartDate(e.target.value)}
+                                className="bg-slate-50 px-3 py-2 rounded border border-slate-200 text-sm outline-none focus:border-[#0F4C5C]"
+                            />
+                            <span className="text-slate-400">-</span>
+                            <input
+                                type="date"
+                                value={customEndDate}
+                                onChange={(e) => setCustomEndDate(e.target.value)}
+                                className="bg-slate-50 px-3 py-2 rounded border border-slate-200 text-sm outline-none focus:border-[#0F4C5C]"
+                            />
+                        </div>
+                    )
+                }
+
+                <select
+                    value={filterSite}
+                    onChange={e => setFilterSite(e.target.value)}
+                    className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded border border-slate-200 cursor-pointer hover:border-[#0F4C5C] text-sm font-medium text-slate-700 outline-none"
+                >
+                    <option value="all">{t.dashboard?.filters?.allSites || "All sites"}</option>
+                    {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+            </div >
+
+            {/* 3. LOGS TABLE OR TIMESHEETS */}
+            {
+                view === 'timesheets' ? (
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-[#F8FAFC] border-b border-slate-200">
+                            <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t.dashboard?.report?.employee || "Employee"}</th>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t.dashboard?.report?.daysWorked || "Days Worked"}</th>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t.dashboard?.report?.totalHours || "Total Hours"}</th>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t.dashboard?.report?.totalOvertime || "Overtime"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.date || "Date"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.employee || "Employee"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.firstIn || "Start"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.lastOut || "End"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">{t.dashboard?.timesheet?.total || "Total Worked"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">{t.dashboard?.timesheet?.overtime || "Overtime"}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {reportData.length === 0 ? (
-                                    <tr><td colSpan={4} className="p-8 text-center text-slate-500 italic">No data found for this period.</td></tr>
-                                ) : reportData.map(item => (
-                                    <tr key={item.id} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                                {timesheetData.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-slate-500">No active timesheets for this period.</td></tr>
+                                ) : timesheetData.map(item => (
+                                    <tr key={item.key} className="hover:bg-slate-50 transition-colors">
+                                        <td className="p-4 font-medium text-slate-700">{item.date.toLocaleDateString()}</td>
                                         <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                {item.avatar_url ? (
-                                                    <img src={item.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
-                                                ) : (
-                                                    <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs border border-slate-200">
-                                                        {item.name.charAt(0)}
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <div className="font-bold text-slate-900 text-sm">{item.name}</div>
-                                                    <div className="text-xs text-slate-500">{item.job}</div>
-                                                </div>
-                                            </div>
+                                            <div className="font-bold text-slate-900">{item.employeeName}</div>
+                                            <div className="text-xs text-slate-500">{item.jobTitle}</div>
                                         </td>
-                                        <td className="p-4 text-slate-700 font-medium text-sm">
-                                            <span className="bg-slate-100 px-2 py-1 rounded text-slate-600 font-bold text-xs">{item.days} jours</span>
+                                        <td className="p-4 text-slate-600 font-mono text-xs">{item.firstIn?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
+                                        <td className="p-4 text-slate-600 font-mono text-xs">{item.lastOut?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
+                                        <td className="p-4 text-right">
+                                            <div className="font-bold text-slate-900 font-mono">{item.durationStr}</div>
+                                            {item.breakDeduction > 0 && (
+                                                <div className="text-xs text-amber-600 font-medium">(-{item.breakDeduction}m pause)</div>
+                                            )}
                                         </td>
                                         <td className="p-4 text-right">
-                                            <div className="font-bold text-slate-900 font-mono text-base">{item.totalStr}</div>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            {item.overtimeMin > 0 ? (
-                                                <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold mono">
+                                            {item.overtimeMinutes > 0 ? (
+                                                <span className="bg-green-100 text-green-700 font-bold px-2 py-1 rounded text-xs">
                                                     {item.overtimeStr}
                                                 </span>
                                             ) : (
-                                                <span className="text-slate-300 font-mono text-sm">-</span>
+                                                <span className="text-slate-300">-</span>
                                             )}
                                         </td>
                                     </tr>
@@ -1113,372 +1003,477 @@ return (
                             </tbody>
                         </table>
                     </div>
-                </div>
-            ) : (
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" >
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Employee</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Movement</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Photo Proof</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Time</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Source</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {isLoading ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-slate-500">Loading...</td></tr>
-                            ) : filteredLogs.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-slate-500">No logs found.</td></tr>
-                            ) : filteredLogs.map((log) => {
-                                // Only calculate offline sync if it is NOT a manual entry
-                                const isOfflineSync = !log.is_manual_entry && (Math.abs(new Date(log.created_at).getTime() - new Date(log.timestamp).getTime()) / 60000 > 5);
-                                const logDate = new Date(log.timestamp);
+                ) : view === 'reports' ? (
+                    <div className="space-y-6">
+                        {/* SUMMARY CARDS */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* TOTAL HOURS */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                    <Clock className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-slate-500 font-medium">{t.dashboard?.report?.totalHours || "Total Heures"}</div>
+                                    <div className="text-2xl font-bold text-slate-900">
+                                        {(() => {
+                                            const totalM = Math.round(reportData.reduce((acc, curr) => acc + curr.totalMin, 0));
+                                            const h = Math.floor(totalM / 60);
+                                            const m = Math.floor(totalM % 60);
+                                            return `${h}h${m.toString().padStart(2, '0')}`;
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
 
-                                return (
-                                    <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
+                            {/* TOTAL OVERTIME */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                                    <AlertCircle className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-slate-500 font-medium">{t.dashboard?.report?.totalOvertime || "Heures Sup."}</div>
+                                    <div className="text-2xl font-bold text-slate-900">
+                                        {(() => {
+                                            const totalM = Math.round(reportData.reduce((acc, curr) => acc + curr.overtimeMin, 0));
+                                            const h = Math.floor(totalM / 60);
+                                            const m = Math.floor(totalM % 60);
+                                            return `${h}h${m.toString().padStart(2, '0')}`;
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
 
-                                        {/* EMPLOYEE */}
-                                        <td className="p-4">
-                                            <div className="font-bold text-slate-900">
-                                                {log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : "Unknown"}
-                                            </div>
-                                            <div className="text-xs text-slate-500 uppercase">
-                                                {log.employee?.job_title || "No Title"}
-                                            </div>
-                                        </td>
+                            {/* ACTIVE EMPLOYEES */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                    <Users className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-slate-500 font-medium">Effectif Actif</div>
+                                    <div className="text-2xl font-bold text-slate-900">
+                                        {reportData.length}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                        {/* TYPE (IN/OUT) */}
-                                        <td className="p-4">
-                                            {log.type === 'IN' ? (
-                                                <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">
-                                                    <ArrowRightCircle className="h-3 w-3" /> CLOCK IN
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-bold">
-                                                    <ArrowLeftCircle className="h-3 w-3" /> CLOCK OUT
-                                                </span>
-                                            )}
-                                        </td>
 
-                                        {/* PHOTO (Zoom on hover) */}
-                                        <td className="p-4">
-                                            {log.photo ? (
-                                                <div className="relative group/photo h-10 w-10">
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img
-                                                        src={log.photo}
-                                                        alt="Proof"
-                                                        className="h-10 w-10 rounded object-cover border border-slate-200 cursor-zoom-in"
-                                                    />
-                                                    {/* Tooltip Zoom Image (On hover) */}
-                                                    <div className="absolute left-12 top-[-50px] hidden group-hover/photo:block z-50">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-[#F8FAFC] border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t.dashboard?.report?.employee || "Employee"}</th>
+                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t.dashboard?.report?.daysWorked || "Days Worked"}</th>
+                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t.dashboard?.report?.totalHours || "Total Hours"}</th>
+                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t.dashboard?.report?.totalOvertime || "Overtime"}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {reportData.length === 0 ? (
+                                        <tr><td colSpan={4} className="p-8 text-center text-slate-500 italic">No data found for this period.</td></tr>
+                                    ) : reportData.map(item => (
+                                        <tr key={item.id} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-3">
+                                                    {item.avatar_url ? (
+                                                        <img src={item.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs border border-slate-200">
+                                                            {item.name.charAt(0)}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="font-bold text-slate-900 text-sm">{item.name}</div>
+                                                        <div className="text-xs text-slate-500">{item.job}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-slate-700 font-medium text-sm">
+                                                <span className="bg-slate-100 px-2 py-1 rounded text-slate-600 font-bold text-xs">{item.days} jours</span>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <div className="font-bold text-slate-900 font-mono text-base">{item.totalStr}</div>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                {item.overtimeMin > 0 ? (
+                                                    <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold mono">
+                                                        {item.overtimeStr}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-300 font-mono text-sm">-</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" >
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Employee</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Movement</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Photo Proof</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Time</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Source</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {isLoading ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-slate-500">Loading...</td></tr>
+                                ) : filteredLogs.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-slate-500">No logs found.</td></tr>
+                                ) : filteredLogs.map((log) => {
+                                    // Only calculate offline sync if it is NOT a manual entry
+                                    const isOfflineSync = !log.is_manual_entry && (Math.abs(new Date(log.created_at).getTime() - new Date(log.timestamp).getTime()) / 60000 > 5);
+                                    const logDate = new Date(log.timestamp);
+
+                                    return (
+                                        <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
+
+                                            {/* EMPLOYEE */}
+                                            <td className="p-4">
+                                                <div className="font-bold text-slate-900">
+                                                    {log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : "Unknown"}
+                                                </div>
+                                                <div className="text-xs text-slate-500 uppercase">
+                                                    {log.employee?.job_title || "No Title"}
+                                                </div>
+                                            </td>
+
+                                            {/* TYPE (IN/OUT) */}
+                                            <td className="p-4">
+                                                {log.type === 'IN' ? (
+                                                    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">
+                                                        <ArrowRightCircle className="h-3 w-3" /> CLOCK IN
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-bold">
+                                                        <ArrowLeftCircle className="h-3 w-3" /> CLOCK OUT
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            {/* PHOTO (Zoom on hover) */}
+                                            <td className="p-4">
+                                                {log.photo ? (
+                                                    <div className="relative group/photo h-10 w-10">
                                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                                         <img
                                                             src={log.photo}
-                                                            alt="Zoom"
-                                                            className="h-32 w-32 rounded-lg border-2 border-white shadow-xl object-cover"
+                                                            alt="Proof"
+                                                            className="h-10 w-10 rounded object-cover border border-slate-200 cursor-zoom-in"
                                                         />
+                                                        {/* Tooltip Zoom Image (On hover) */}
+                                                        <div className="absolute left-12 top-[-50px] hidden group-hover/photo:block z-50">
+                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                            <img
+                                                                src={log.photo}
+                                                                alt="Zoom"
+                                                                className="h-32 w-32 rounded-lg border-2 border-white shadow-xl object-cover"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-400 italic">No Photo</span>
-                                            )}
-                                        </td>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 italic">No Photo</span>
+                                                )}
+                                            </td>
 
-                                        {/* TIME & STATUS */}
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <div>
-                                                    <div className="font-mono font-bold text-slate-800 text-base">
-                                                        {logDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                            {/* TIME & STATUS */}
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div>
+                                                        <div className="font-mono font-bold text-slate-800 text-base">
+                                                            {logDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500">
+                                                            {logDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-xs text-slate-500">
-                                                        {logDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                                    </div>
-                                                </div>
 
-                                                {/* LATE INDICATOR */}
-                                                {(() => {
-                                                    if (log.type !== 'IN') return null;
-                                                    // Default rules if settings not loaded yet
-                                                    // Ideally we use orgSettings.planning.start_time, but per analysis it might be implicit
-                                                    // Let's assume 08:00 AM start if not present
-                                                    const startStr = orgSettings?.planning?.start_time || "08:00";
-                                                    const tolerance = orgSettings?.attendance?.tolerance_minutes || 5;
+                                                    {/* LATE INDICATOR */}
+                                                    {(() => {
+                                                        if (log.type !== 'IN') return null;
+                                                        // Default rules if settings not loaded yet
+                                                        // Ideally we use orgSettings.planning.start_time, but per analysis it might be implicit
+                                                        // Let's assume 08:00 AM start if not present
+                                                        const startStr = orgSettings?.planning?.start_time || "08:00";
+                                                        const tolerance = orgSettings?.attendance?.tolerance_minutes || 5;
 
-                                                    const [startH, startM] = startStr.split(':').map(Number);
-                                                    const logH = logDate.getHours();
-                                                    const logM = logDate.getMinutes();
+                                                        const [startH, startM] = startStr.split(':').map(Number);
+                                                        const logH = logDate.getHours();
+                                                        const logM = logDate.getMinutes();
 
-                                                    const startMinutes = startH * 60 + startM;
-                                                    const logMinutes = logH * 60 + logM;
+                                                        const startMinutes = startH * 60 + startM;
+                                                        const logMinutes = logH * 60 + logM;
 
-                                                    if (logMinutes > startMinutes + tolerance) {
-                                                        const diff = logMinutes - startMinutes;
-                                                        return (
-                                                            <div className="relative group/late">
-                                                                <Clock className="h-4 w-4 text-red-500 cursor-help" />
-                                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg opacity-0 group-hover/late:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                                                                    Late arrival (+{diff} min)
+                                                        if (logMinutes > startMinutes + tolerance) {
+                                                            const diff = logMinutes - startMinutes;
+                                                            return (
+                                                                <div className="relative group/late">
+                                                                    <Clock className="h-4 w-4 text-red-500 cursor-help" />
+                                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg opacity-0 group-hover/late:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                                                                        Late arrival (+{diff} min)
+                                                                    </div>
                                                                 </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                </div>
+                                            </td>
+
+                                            {/* SOURCE & SYNC */}
+                                            <td className="p-4">
+                                                <div className="text-sm text-slate-600">{log.site?.name || "N/A"}</div>
+                                                <div className="text-xs text-slate-400 flex items-center gap-1">
+                                                    {log.kiosk?.name || "Manual"}
+
+                                                    {/* Offline Indicator */}
+                                                    {isOfflineSync && (
+                                                        <div className="group/offline relative">
+                                                            <CloudOff className="h-3 w-3 text-amber-500 cursor-help" />
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/offline:block bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
+                                                                Data synchronized later (Offline)
                                                             </div>
-                                                        );
-                                                    }
-                                                    return null;
-                                                })()}
-                                            </div>
-                                        </td>
-
-                                        {/* SOURCE & SYNC */}
-                                        <td className="p-4">
-                                            <div className="text-sm text-slate-600">{log.site?.name || "N/A"}</div>
-                                            <div className="text-xs text-slate-400 flex items-center gap-1">
-                                                {log.kiosk?.name || "Manual"}
-
-                                                {/* Offline Indicator */}
-                                                {isOfflineSync && (
-                                                    <div className="group/offline relative">
-                                                        <CloudOff className="h-3 w-3 text-amber-500 cursor-help" />
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/offline:block bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
-                                                            Data synchronized later (Offline)
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    )}
 
-                                                {/* Correction/Manual Reason Indicator */}
-                                                {log.correction_reason && (
-                                                    <div className="group/reason relative">
-                                                        <AlertCircle className="h-3 w-3 text-blue-500 cursor-help" />
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/reason:block bg-black text-white text-[10px] px-2 py-1 rounded w-max max-w-[200px] z-10 text-center">
-                                                            Reason: {log.correction_reason}
+                                                    {/* Correction/Manual Reason Indicator */}
+                                                    {log.correction_reason && (
+                                                        <div className="group/reason relative">
+                                                            <AlertCircle className="h-3 w-3 text-blue-500 cursor-help" />
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/reason:block bg-black text-white text-[10px] px-2 py-1 rounded w-max max-w-[200px] z-10 text-center">
+                                                                Reason: {log.correction_reason}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
+                                                    )}
+                                                </div>
+                                            </td>
 
-                                        {/* ACTIONS */}
-                                        <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => handleCorrect(log)}
-                                                className="text-sm text-slate-400 hover:text-[#0F4C5C] font-medium underline"
-                                            >
-                                                Correct
-                                            </button>
-                                        </td>
+                                            {/* ACTIONS */}
+                                            <td className="p-4 text-right">
+                                                <button
+                                                    onClick={() => handleCorrect(log)}
+                                                    className="text-sm text-slate-400 hover:text-[#0F4C5C] font-medium underline"
+                                                >
+                                                    Correct
+                                                </button>
+                                            </td>
 
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )
-        }
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )
+            }
 
-        {/* MANUAL ENTRY MODAL */}
-        {
-            isManualEntryModalOpen && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-                        {/* HEADER */}
-                        <div className="bg-[#0F4C5C] px-6 py-4 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-3">
-                                <Plus className="h-5 w-5 text-[#FFC107]" strokeWidth={3} />
-                                <h3 className="text-lg font-bold text-white tracking-wide">
-                                    {editingId ? "Correction Pointage" : (t.dashboard?.manualEntry || "Ajout Manuel")}
-                                </h3>
+            {/* MANUAL ENTRY MODAL */}
+            {
+                isManualEntryModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                            {/* HEADER */}
+                            <div className="bg-[#0F4C5C] px-6 py-4 flex justify-between items-center shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <Plus className="h-5 w-5 text-[#FFC107]" strokeWidth={3} />
+                                    <h3 className="text-lg font-bold text-white tracking-wide">
+                                        {editingId ? "Correction Pointage" : (t.dashboard?.manualEntry || "Ajout Manuel")}
+                                    </h3>
+                                </div>
+                                <button
+                                    onClick={() => setIsManualEntryModalOpen(false)}
+                                    className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+                                >
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setIsManualEntryModalOpen(false)}
-                                className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
 
-                        {/* BODY */}
-                        <div className="p-6 overflow-y-auto custom-scrollbar">
-                            <form id="manual-entry-form" onSubmit={handleManualEntrySave} className="space-y-5">
+                            {/* BODY */}
+                            <div className="p-6 overflow-y-auto custom-scrollbar">
+                                <form id="manual-entry-form" onSubmit={handleManualEntrySave} className="space-y-5">
 
-                                {/* Employee (Searchable Dropdown) */}
-                                <div className="relative">
-                                    <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.dashboard?.report?.employee || "Employé"}</label>
+                                    {/* Employee (Searchable Dropdown) */}
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Search className="h-4 w-4 text-slate-400" />
+                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.dashboard?.report?.employee || "Employé"}</label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <Search className="h-4 w-4 text-slate-400" />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium placeholder:font-normal"
+                                                placeholder="Rechercher un employé..."
+                                                value={employeeSearch}
+                                                onChange={e => {
+                                                    setEmployeeSearch(e.target.value);
+                                                    setIsEmployeeDropdownOpen(true);
+                                                    // Clear selection if user types (must select from list)
+                                                    if (manualForm.employee_id) setManualForm({ ...manualForm, employee_id: "" });
+                                                }}
+                                                onFocus={() => setIsEmployeeDropdownOpen(true)}
+                                                // Handle blur with delay to allow click on item
+                                                onBlur={() => setTimeout(() => setIsEmployeeDropdownOpen(false), 200)}
+                                                required={!manualForm.employee_id} // Required if no ID selected
+                                            />
+                                            {/* Dropdown Icon */}
+                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <ArrowRightCircle className="h-4 w-4 text-slate-300 rotate-90" />
+                                            </div>
                                         </div>
-                                        <input
-                                            type="text"
-                                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium placeholder:font-normal"
-                                            placeholder="Rechercher un employé..."
-                                            value={employeeSearch}
-                                            onChange={e => {
-                                                setEmployeeSearch(e.target.value);
-                                                setIsEmployeeDropdownOpen(true);
-                                                // Clear selection if user types (must select from list)
-                                                if (manualForm.employee_id) setManualForm({ ...manualForm, employee_id: "" });
-                                            }}
-                                            onFocus={() => setIsEmployeeDropdownOpen(true)}
-                                            // Handle blur with delay to allow click on item
-                                            onBlur={() => setTimeout(() => setIsEmployeeDropdownOpen(false), 200)}
-                                            required={!manualForm.employee_id} // Required if no ID selected
-                                        />
-                                        {/* Dropdown Icon */}
-                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                            <ArrowRightCircle className="h-4 w-4 text-slate-300 rotate-90" />
-                                        </div>
-                                    </div>
 
-                                    {/* DROPDOWN LIST */}
-                                    {isEmployeeDropdownOpen && (
-                                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
-                                            {employees
-                                                .filter(e => {
-                                                    const fullName = `${e.first_name} ${e.last_name}`.toLowerCase();
-                                                    return fullName.includes(employeeSearch.toLowerCase());
-                                                })
-                                                .length === 0 ? (
-                                                <div className="p-3 text-sm text-slate-500 text-center italic">Aucun employé trouvé.</div>
-                                            ) : (
-                                                employees
+                                        {/* DROPDOWN LIST */}
+                                        {isEmployeeDropdownOpen && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                                {employees
                                                     .filter(e => {
                                                         const fullName = `${e.first_name} ${e.last_name}`.toLowerCase();
                                                         return fullName.includes(employeeSearch.toLowerCase());
                                                     })
-                                                    .map(e => (
-                                                        <div
-                                                            key={e.id}
-                                                            className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 border-b border-slate-50 last:border-0 transition-colors"
-                                                            onMouseDown={(ev) => {
-                                                                ev.preventDefault(); // Prevent input blur
-                                                                setManualForm({ ...manualForm, employee_id: e.id });
-                                                                setEmployeeSearch(`${e.first_name} ${e.last_name}`);
-                                                                setIsEmployeeDropdownOpen(false);
-                                                            }}
-                                                        >
-                                                            <div className="h-8 w-8 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] flex items-center justify-center font-bold text-xs">
-                                                                {e.first_name.charAt(0)}{e.last_name.charAt(0)}
+                                                    .length === 0 ? (
+                                                    <div className="p-3 text-sm text-slate-500 text-center italic">Aucun employé trouvé.</div>
+                                                ) : (
+                                                    employees
+                                                        .filter(e => {
+                                                            const fullName = `${e.first_name} ${e.last_name}`.toLowerCase();
+                                                            return fullName.includes(employeeSearch.toLowerCase());
+                                                        })
+                                                        .map(e => (
+                                                            <div
+                                                                key={e.id}
+                                                                className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 border-b border-slate-50 last:border-0 transition-colors"
+                                                                onMouseDown={(ev) => {
+                                                                    ev.preventDefault(); // Prevent input blur
+                                                                    setManualForm({ ...manualForm, employee_id: e.id });
+                                                                    setEmployeeSearch(`${e.first_name} ${e.last_name}`);
+                                                                    setIsEmployeeDropdownOpen(false);
+                                                                }}
+                                                            >
+                                                                <div className="h-8 w-8 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] flex items-center justify-center font-bold text-xs">
+                                                                    {e.first_name.charAt(0)}{e.last_name.charAt(0)}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-slate-800 text-sm">{e.first_name} {e.last_name}</div>
+                                                                    <div className="text-xs text-slate-500">{e.job_title || "Employé"}</div>
+                                                                </div>
+                                                                {manualForm.employee_id === e.id && (
+                                                                    <CheckCircle className="h-4 w-4 text-[#0F4C5C] ml-auto" />
+                                                                )}
                                                             </div>
-                                                            <div>
-                                                                <div className="font-bold text-slate-800 text-sm">{e.first_name} {e.last_name}</div>
-                                                                <div className="text-xs text-slate-500">{e.job_title || "Employé"}</div>
-                                                            </div>
-                                                            {manualForm.employee_id === e.id && (
-                                                                <CheckCircle className="h-4 w-4 text-[#0F4C5C] ml-auto" />
-                                                            )}
-                                                        </div>
-                                                    ))
-                                            )}
+                                                        ))
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Row: Type & Site */}
+                                    <div className="grid grid-cols-2 gap-5">
+                                        {/* Type Toggle */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-800 mb-1.5">Type</label>
+                                            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setManualForm(prev => ({ ...prev, type: 'IN' }))}
+                                                    className={`flex-1 py-2 rounded-md text-xs font-extrabold tracking-wide uppercase transition-all ${manualForm.type === 'IN' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    Entrée
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setManualForm(prev => ({ ...prev, type: 'OUT' }))}
+                                                    className={`flex-1 py-2 rounded-md text-xs font-extrabold tracking-wide uppercase transition-all ${manualForm.type === 'OUT' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    Sortie
+                                                </button>
+                                            </div>
                                         </div>
+
+                                        {/* Site Select */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-800 mb-1.5">Site</label>
+                                            <select
+                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
+                                                value={manualForm.site_id}
+                                                onChange={e => setManualForm({ ...manualForm, site_id: e.target.value })}
+                                            >
+                                                <option value="">Sélectionner...</option>
+                                                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Row: Date & Time */}
+                                    <div className="grid grid-cols-2 gap-5">
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.dashboard?.timesheet?.date || "Date"}</label>
+                                            <input
+                                                type="date"
+                                                required
+                                                max={new Date().toISOString().split('T')[0]} // Restricted to today
+                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
+                                                value={manualForm.date}
+                                                onChange={e => setManualForm({ ...manualForm, date: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-800 mb-1.5">Heure</label>
+                                            <input
+                                                type="time"
+                                                required
+                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm text-center"
+                                                value={manualForm.time}
+                                                onChange={e => setManualForm({ ...manualForm, time: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Reason */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                                            Motif de correction <span className="text-red-500">*</span>
+                                        </label>
+                                        <textarea
+                                            required
+                                            className="w-full px-4 py-3 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white text-sm resize-none min-h-[80px]"
+                                            placeholder="Ex: Oubli de code, Terminal hors service..."
+                                            value={manualForm.reason}
+                                            onChange={e => setManualForm({ ...manualForm, reason: e.target.value })}
+                                        />
+                                        <p className="text-xs text-slate-400 mt-1.5">Ce motif apparaîtra dans l'historique d'audit.</p>
+                                    </div>
+
+                                </form>
+                            </div>
+
+                            {/* FOOTER */}
+                            <div className="p-6 pt-2 bg-white rounded-b-xl shrink-0">
+                                <button
+                                    type="submit"
+                                    form="manual-entry-form"
+                                    disabled={manualEntryStatus === 'saving'}
+                                    className="w-full bg-[#FFC107] hover:bg-[#e0a800] text-[#0F4C5C] font-extrabold text-base py-3.5 rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-70 flex justify-center items-center gap-2"
+                                >
+                                    {manualEntryStatus === 'saving' ? (
+                                        <>
+                                            <Loader2 className="animate-spin h-5 w-5" /> Enregistrement...
+                                        </>
+                                    ) : (
+                                        "Enregistrer le pointage"
                                     )}
-                                </div>
-
-                                {/* Row: Type & Site */}
-                                <div className="grid grid-cols-2 gap-5">
-                                    {/* Type Toggle */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">Type</label>
-                                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-                                            <button
-                                                type="button"
-                                                onClick={() => setManualForm(prev => ({ ...prev, type: 'IN' }))}
-                                                className={`flex-1 py-2 rounded-md text-xs font-extrabold tracking-wide uppercase transition-all ${manualForm.type === 'IN' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                            >
-                                                Entrée
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setManualForm(prev => ({ ...prev, type: 'OUT' }))}
-                                                className={`flex-1 py-2 rounded-md text-xs font-extrabold tracking-wide uppercase transition-all ${manualForm.type === 'OUT' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                            >
-                                                Sortie
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Site Select */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">Site</label>
-                                        <select
-                                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
-                                            value={manualForm.site_id}
-                                            onChange={e => setManualForm({ ...manualForm, site_id: e.target.value })}
-                                        >
-                                            <option value="">Sélectionner...</option>
-                                            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Row: Date & Time */}
-                                <div className="grid grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.dashboard?.timesheet?.date || "Date"}</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            max={new Date().toISOString().split('T')[0]} // Restricted to today
-                                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
-                                            value={manualForm.date}
-                                            onChange={e => setManualForm({ ...manualForm, date: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">Heure</label>
-                                        <input
-                                            type="time"
-                                            required
-                                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm text-center"
-                                            value={manualForm.time}
-                                            onChange={e => setManualForm({ ...manualForm, time: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Reason */}
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-800 mb-1.5">
-                                        Motif de correction <span className="text-red-500">*</span>
-                                    </label>
-                                    <textarea
-                                        required
-                                        className="w-full px-4 py-3 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white text-sm resize-none min-h-[80px]"
-                                        placeholder="Ex: Oubli de code, Terminal hors service..."
-                                        value={manualForm.reason}
-                                        onChange={e => setManualForm({ ...manualForm, reason: e.target.value })}
-                                    />
-                                    <p className="text-xs text-slate-400 mt-1.5">Ce motif apparaîtra dans l'historique d'audit.</p>
-                                </div>
-
-                            </form>
-                        </div>
-
-                        {/* FOOTER */}
-                        <div className="p-6 pt-2 bg-white rounded-b-xl shrink-0">
-                            <button
-                                type="submit"
-                                form="manual-entry-form"
-                                disabled={manualEntryStatus === 'saving'}
-                                className="w-full bg-[#FFC107] hover:bg-[#e0a800] text-[#0F4C5C] font-extrabold text-base py-3.5 rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-70 flex justify-center items-center gap-2"
-                            >
-                                {manualEntryStatus === 'saving' ? (
-                                    <>
-                                        <Loader2 className="animate-spin h-5 w-5" /> Enregistrement...
-                                    </>
-                                ) : (
-                                    "Enregistrer le pointage"
-                                )}
-                            </button>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )
-        }
+                )
+            }
 
-    </div >
-);
+        </div >
+    );
 }
