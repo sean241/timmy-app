@@ -164,7 +164,16 @@ export default function AttendanceLogsPage() {
         setManualEntryStatus("saving");
 
         // Combine Date & Time
-        const fullTimestamp = new Date(`${manualForm.date}T${manualForm.time}:00`).toISOString();
+        const entryDate = new Date(`${manualForm.date}T${manualForm.time}:00`);
+
+        // Validation: Prevent Future Entries
+        if (entryDate > new Date()) {
+            setManualEntryStatus("idle");
+            setToast({ message: t.dashboard?.futureEntryError || "Impossible de pointer dans le futur", type: "error" });
+            return;
+        }
+
+        const fullTimestamp = entryDate.toISOString();
 
         const payload = {
             organization_id: organizationId,
