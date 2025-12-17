@@ -9,6 +9,7 @@ import {
     AlertCircle, CloudOff, MapPin, X, CheckCircle, Loader2,
     Users, Clock, UserCheck, AlertTriangle, Lock
 } from 'lucide-react';
+import Toast from '@/components/Toast';
 
 // Types
 interface Log {
@@ -43,6 +44,10 @@ export default function AttendanceLogsPage() {
     const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'last_week' | 'month' | 'custom'>('today');
     const [customStartDate, setCustomStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [shifts, setShifts] = useState<any[]>([]);
+
+    // Toast State
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     // Modal State
     const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false);
@@ -134,8 +139,26 @@ export default function AttendanceLogsPage() {
         const { data: empData } = await supabase.from('employees').select('id, first_name, last_name, job_title, is_active, avatar_url').eq('organization_id', orgId).order('last_name');
         const { data: siteData } = await supabase.from('sites').select('id, name').eq('organization_id', orgId);
 
+        // Fetch Shifts (Last 7 days + Next 2 days) to cover anomalies and future planning
+        const today = new Date();
+        const pastDate = new Date(today);
+        pastDate.setDate(today.getDate() - 7);
+        const futureDate = new Date(today);
+        futureDate.setDate(today.getDate() + 2);
+
+        const startOfHistory = new Date(pastDate.setHours(0, 0, 0, 0)).toISOString();
+        const endOfFuture = new Date(futureDate.setHours(23, 59, 59, 999)).toISOString();
+
+        const { data: shiftData } = await supabase
+            .from('shifts')
+            .select('*')
+            .eq('organization_id', orgId)
+            .gte('start_time', startOfHistory)
+            .lt('start_time', endOfFuture);
+
         if (empData) setEmployees(empData);
         if (siteData) setSites(siteData);
+        if (shiftData) setShifts(shiftData);
     };
 
     const handleCorrect = (log: Log) => {
@@ -198,9 +221,11 @@ export default function AttendanceLogsPage() {
         if (error) {
             console.error("Error saving entry", error);
             setManualEntryStatus("idle");
-            alert("Error saving entry");
+            setToast({ message: "Erreur lors de l'enregistrement", type: "error" });
         } else {
             setManualEntryStatus("success");
+            setToast({ message: "Pointage enregistré avec succès !", type: "success" });
+
             setTimeout(() => {
                 setManualEntryStatus("idle");
                 setIsManualEntryModalOpen(false);
@@ -458,23 +483,51 @@ export default function AttendanceLogsPage() {
         ); // default to true if undefined
 
         // 2. ABSENCES (Today)
-        // Only relevant if work day has started.
+        // Logic: Check if employee has a shift. If so, use shift start. If not, use global start.
         let absenceList: typeof employees = [];
         const startStr = orgSettings?.planning?.start_time || "08:00";
         const [startH, startM] = startStr.split(':').map(Number);
+
+        // Global Start Time Date Object
         const workStart = new Date(today);
         workStart.setHours(startH, startM, 0, 0);
 
-        // Add small buffer (e.g. 15 mins) before declaring total absence, or just strictly after start time?
-        // Let's use start time.
-        if (today > workStart) {
-            absenceList = activeEmployees.filter(emp => !uniqueEmployeesToday.has(emp.id));
-        }
+        absenceList = activeEmployees.map(emp => {
+            // If already present (clocked in), not absent
+            if (uniqueEmployeesToday.has(emp.id)) return null;
+
+            // Check for specific shift TODAY
+            const empShift = shifts.find(s => {
+                const sTime = new Date(s.start_time).getTime();
+                // Check if shift starts today (local time logic)
+                const sDate = new Date(s.start_time);
+                return s.employee_id === emp.id &&
+                    sDate.getDate() === today.getDate() &&
+                    sDate.getMonth() === today.getMonth() &&
+                    sDate.getFullYear() === today.getFullYear();
+            });
+            let expectedStart = startStr;
+            let isLate = false;
+
+            if (empShift) {
+                const shiftStart = new Date(empShift.start_time);
+                isLate = today > shiftStart;
+                expectedStart = shiftStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                isLate = today > workStart;
+            }
+
+            // Only return if actually late/absent based on their specific time
+            if (isLate) {
+                return { ...emp, expectedStart };
+            }
+            return null;
+        }).filter(Boolean) as any[];
 
         // 3. ANOMALIES (Past Missing Checkout)
         // Group logs by Employee -> Day (excluding today)
         // If the LAST action of a past day is IN, it matches the anomaly criteria.
-        const anomalyList: { employee_id: string, date: string, last_log: Log }[] = [];
+        const anomalyList: { employee_id: string, date: string, last_log: Log, fixTime?: string }[] = [];
         const logsByEmpDate: Record<string, Log[]> = {};
 
         logs.forEach(log => {
@@ -496,10 +549,39 @@ export default function AttendanceLogsPage() {
             if (lastAction.type === 'IN') {
                 // Anomaly Found
                 const [empId, dateStr] = key.split('_');
+
+                // Determine Fix Time
+                // 1. Check if there was a shift for this employee on this date
+                const anomalyDate = new Date(dateStr);
+                const shift = shifts.find(s => {
+                    const sDate = new Date(s.start_time);
+                    return s.employee_id === empId &&
+                        sDate.getDate() === anomalyDate.getDate() &&
+                        sDate.getMonth() === anomalyDate.getMonth() &&
+                        sDate.getFullYear() === anomalyDate.getFullYear();
+                });
+
+                let fixTime = "18:00"; // Default Fallback
+
+                if (shift) {
+                    // Use shift end time
+                    const endTime = new Date(shift.end_time);
+                    fixTime = endTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    // Use Org Default or "18:00"
+                    // If orgSettings.planning.end_time exists (e.g. "17:00")
+                    if (orgSettings?.planning?.end_time) {
+                        fixTime = orgSettings.planning.end_time;
+                    }
+                    // Or derived from standard day duration? 
+                    // Let's stick to explicit end_time setting or 18:00
+                }
+
                 anomalyList.push({
                     employee_id: empId,
                     date: dateStr,
-                    last_log: lastAction
+                    last_log: lastAction,
+                    fixTime: fixTime
                 });
             }
         });
@@ -516,37 +598,17 @@ export default function AttendanceLogsPage() {
         };
     })();
 
-    const handleQuickFix = async (anomaly: { employee_id: string, date: string, last_log: Log }) => {
-        if (!organizationId) return;
-        const confirmFix = window.confirm(`Fix ${anomaly.last_log.employee?.first_name || 'Employee'}'s missing checkout for ${anomaly.date} by setting it to 18:00?`);
-        if (!confirmFix) return;
-
-        // Auto-create checkout at 18:00
-        const fixDate = anomaly.date;
-        const fixTime = "18:00:00";
-        const fullTimestamp = new Date(`${fixDate}T${fixTime}`).toISOString();
-
-        const { error } = await supabase
-            .from('attendance_logs')
-            .insert({
-                organization_id: organizationId,
-                employee_id: anomaly.employee_id,
-                site_id: (anomaly.last_log as any).site_id, // Use same site
-                type: 'CHECK_OUT',
-                timestamp: fullTimestamp,
-                is_manual_entry: true,
-                correction_reason: "Smart Fix: Forgot to clock out",
-                is_offline_sync: false,
-                kiosk_id: null
-            });
-
-        if (error) {
-            alert("Error fixing anomaly");
-            console.error(error);
-        } else {
-            // Refresh
-            fetchLogs(organizationId);
-        }
+    const handleQuickFix = (anomaly: { employee_id: string, date: string, last_log: Log, fixTime?: string }) => {
+        setEditingId(null);
+        setManualForm({
+            employee_id: anomaly.employee_id,
+            type: "OUT", // Fixing a missing checkout means creating an OUT log
+            date: anomaly.date,
+            time: anomaly.fixTime || "18:00",
+            site_id: (anomaly.last_log as any).site_id || "",
+            reason: t.dashboard?.fixReason || "Correction: Oubli de pointage"
+        });
+        setIsManualEntryModalOpen(true);
     };
 
     // --- LOCK / VALIDATION LOGIC ---
@@ -707,7 +769,9 @@ export default function AttendanceLogsPage() {
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                             <div className="flex-1">
-                                <h3 className="font-bold text-red-800 text-sm mb-1">{anomalies.length} {t.dashboard?.anomaliesTitle || "Anomalies Detected"}</h3>
+                                <h3 className="font-bold text-red-800 text-sm mb-1">
+                                    {anomalies.length} {anomalies.length > 1 ? (t.dashboard?.anomaliesTitle || "Anomalies Détectées") : "Anomalie Détectée"}
+                                </h3>
                                 <p className="text-xs text-red-600 mb-3">{t.dashboard?.anomaliesDesc || "The following employees forgot to clock out on previous days."}</p>
 
                                 <div className="space-y-2">
@@ -722,7 +786,7 @@ export default function AttendanceLogsPage() {
                                                 onClick={() => handleQuickFix(anomaly)}
                                                 className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-bold hover:bg-red-200 transition-colors"
                                             >
-                                                {t.dashboard?.fixBtn || "Fix (Set 18:00)"}
+                                                {t.dashboard?.fixBtn?.replace('18:00', anomaly.fixTime || '18:00') || `Corriger (${anomaly.fixTime || '18:00'})`}
                                             </button>
                                         </div>
                                     ))}
@@ -738,8 +802,10 @@ export default function AttendanceLogsPage() {
                         <div className="flex items-start gap-3">
                             <Clock className="h-5 w-5 text-orange-600 mt-0.5" />
                             <div className="flex-1">
-                                <h3 className="font-bold text-orange-800 text-sm mb-1">{absences.length} {t.dashboard?.absencesTitle || "Absent Employees Today"}</h3>
-                                <p className="text-xs text-orange-600 mb-3">{t.dashboard?.absencesDesc || "Work day has started."} ({t.dashboard?.dayStartedAt || "Started at"} {orgSettings?.planning?.start_time || "08:00"})</p>
+                                <h3 className="font-bold text-orange-800 text-sm mb-1">
+                                    {absences.length} {absences.length > 1 ? (t.dashboard?.absencesTitle || "Employés Absents") : "Employé Absent"}
+                                </h3>
+                                <p className="text-xs text-orange-600 mb-3">{t.dashboard?.absencesDesc || "La journée a commencé. Ces employés n'ont pas encore pointé."}</p>
 
                                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                                     {absences.map((emp, idx) => (
@@ -749,7 +815,7 @@ export default function AttendanceLogsPage() {
                                                     {emp.first_name?.[0]}{emp.last_name?.[0]}
                                                 </div>
                                                 <span className="font-bold text-slate-800">{emp.first_name} {emp.last_name}</span>
-                                                <span className="text-xs text-slate-400">{emp.job_title}</span>
+                                                <span className="text-xs text-slate-400">{emp.job_title} • Attendu à {emp.expectedStart}</span>
                                             </div>
                                             <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">
                                                 {t.dashboard?.absentTag || "Absent"}
@@ -1392,6 +1458,10 @@ export default function AttendanceLogsPage() {
                                     <>
                                         <Loader2 className="animate-spin h-5 w-5" /> Enregistrement...
                                     </>
+                                ) : manualEntryStatus === 'success' ? (
+                                    <>
+                                        <CheckCircle className="h-5 w-5" /> Enregistré !
+                                    </>
                                 ) : (
                                     "Enregistrer le pointage"
                                 )}
@@ -1401,6 +1471,13 @@ export default function AttendanceLogsPage() {
                 </div>
             )}
 
-        </div >
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
+        </div>
     );
 }
