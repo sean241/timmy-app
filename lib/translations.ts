@@ -45,7 +45,9 @@ export const translations = {
                 system: "Le Système",
                 support: "Support & Expérience"
             },
-            logout: "Se déconnecter"
+            logout: "Se déconnecter",
+            collapse: "Réduire la barre latérale",
+            expand: "Agrandir la barre latérale"
         },
         days: {
             mon: { short: "Lun", full: "Lundi" },
@@ -1007,7 +1009,9 @@ export const translations = {
                 system: "System",
                 support: "Support & Experience"
             },
-            logout: "Sign Out"
+            logout: "Sign Out",
+            collapse: "Collapse sidebar",
+            expand: "Expand sidebar"
         },
         dashboard: {
             totalEmployees: "Total Employees",

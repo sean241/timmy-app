@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Calendar, Gift, ChevronDown, User } from "lucide-react";
+import { Search, Calendar, Gift, ChevronDown, User, Menu } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/app/context/LanguageContext";
+import { useSidebar } from "@/app/context/SidebarContext";
 
 export default function TopNav() {
     const { t } = useLanguage();
@@ -65,11 +66,23 @@ export default function TopNav() {
         }
     };
 
+    const { isCollapsed, toggleSidebar } = useSidebar();
+
     return (
         <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40 px-8 flex items-center justify-between">
-            {/* Search Bar */}
-            <div className="flex-1 max-w-2xl">
-                <div className="relative group">
+            {/* Left Actions: Toggle + Search */}
+            <div className="flex-1 max-w-2xl flex items-center gap-4">
+                <button
+                    onClick={toggleSidebar}
+                    className="p-2 -ml-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                    title={isCollapsed ? t.sidebar.expand : t.sidebar.collapse}
+                >
+                    <Menu size={20} />
+                </button>
+
+                <div className="h-6 w-px bg-gray-200"></div>
+
+                <div className="relative group flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#0F4C5C] transition-colors" size={16} />
                     <input
                         type="text"
