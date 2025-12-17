@@ -110,9 +110,10 @@ export default function UpdatePasswordPage() {
                 router.push("/admin");
             }, 3000);
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Update password error:", err);
-            setError(err.message || t.updatePassword.errors.default);
+            const message = err instanceof Error ? err.message : t.updatePassword.errors.default;
+            setError(message);
         } finally {
             setIsLoading(false);
         }

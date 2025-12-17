@@ -111,9 +111,10 @@ export default function OnboardingPage() {
             }
             // Redirect to Dashboard with success flag
             router.push("/admin/dashboard?new_account=true&welcome=true");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Onboarding error:", err);
-            setError(err.message || "Une erreur est survenue lors de la création de votre espace.");
+            const message = err instanceof Error ? err.message : "Une erreur est survenue lors de la création de votre espace.";
+            setError(message);
         } finally {
             setIsLoading(false);
         }

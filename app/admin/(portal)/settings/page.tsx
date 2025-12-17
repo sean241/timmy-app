@@ -5,8 +5,9 @@ import {
     Building2, Users, Bell, CreditCard, Puzzle, User,
     Save, Upload, Plus, Trash2, CheckCircle, AlertCircle,
     Mail, Shield, Smartphone, FileText, Download, Loader2,
-    FileSpreadsheet, Calendar, Calculator, Lock as LockIcon, BarChart3, UserPlus, X, Camera, Clock, Send, Eye, EyeOff
+    Clock, Send
 } from "lucide-react";
+import Image from "next/image";
 
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/app/context/LanguageContext";
@@ -376,7 +377,7 @@ function GeneralSettings({ organizationId }: { organizationId: string | null }) 
 
             setToast({ message: "Logo ajouté avec succès", type: "success" });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error uploading logo:", error);
             setToast({ message: "Erreur lors de l'upload du logo", type: "error" });
         } finally {
@@ -452,10 +453,12 @@ function GeneralSettings({ organizationId }: { organizationId: string | null }) 
                 <div className="flex items-center gap-6">
                     <div className="w-24 h-24 bg-gray-100 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300 text-gray-400 overflow-hidden relative">
                         {settings.general.logo_url ? (
-                            <img
+                            <Image
                                 src={settings.general.logo_url}
                                 alt="Company Logo"
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
+                                unoptimized
                             />
                         ) : (
                             <Building2 size={32} />

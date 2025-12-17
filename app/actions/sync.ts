@@ -3,6 +3,17 @@
 import { createClient } from '@supabase/supabase-js'
 import { Employee } from '@/types'
 
+interface KioskLog {
+    employee_id: string;
+    organization_id: string;
+    site_id: string;
+    kiosk_id: string;
+    type: 'IN' | 'OUT';
+    timestamp: string;
+    photo?: string;
+    [key: string]: any;
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -25,7 +36,7 @@ export async function fetchOrganizationEmployees(organizationId: string) {
     return { success: true, employees: data }
 }
 
-export async function pushKioskLogs(logs: any[]) {
+export async function pushKioskLogs(logs: KioskLog[]) {
     if (!supabaseUrl || !supabaseServiceKey) return { error: 'Server config missing' }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -97,16 +108,16 @@ export async function fetchKioskConfig(kioskId: string) {
         success: true,
         config: {
             kiosk_name: data.name,
-            organization_name: (data.organizations as any)?.name,
-            organization_settings: (data.organizations as any)?.settings,
-            site_name: (data.sites as any)?.name,
+            organization_name: (data.organizations as unknown as { name: string })?.name,
+            organization_settings: (data.organizations as unknown as { settings: any })?.settings,
+            site_name: (data.sites as unknown as { name: string })?.name,
             organization_id: data.organization_id,
             site_id: data.site_id
         }
     }
 }
 
-export async function logAppEvent(organizationId: string, action: string, details: any = {}) {
+export async function logAppEvent(organizationId: string, action: string, details: Record<string, any> = {}) {
     if (!supabaseUrl || !supabaseServiceKey) return { error: 'Server config missing' }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)

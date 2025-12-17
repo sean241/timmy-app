@@ -38,7 +38,7 @@ export default function HelpPage() {
 
     // Combine all FAQs into a flat list for search, or structured for categorical view
     const allFaqs = Object.entries(t.help?.faq || {}).flatMap(([catId, questions]) =>
-        (questions as any[]).map((q, idx) => ({ ...q, id: `${catId}-${idx}`, category: catId }))
+        (questions as { q: string; a: string }[]).map((q, idx) => ({ ...q, id: `${catId}-${idx}`, category: catId }))
     );
 
     const filteredFaqs = allFaqs.filter(item => {
@@ -49,7 +49,7 @@ export default function HelpPage() {
     });
 
     return (
-        <PageContainer title={t.help?.title} subtitle={t.help?.subtitle}>
+        <PageContainer>
 
             {/* Search Header */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8 max-w-4xl mx-auto text-center space-y-6">
