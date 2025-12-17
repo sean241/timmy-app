@@ -43,7 +43,7 @@ export default function AttendanceLogsPage() {
     const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'last_week' | 'month' | 'custom'>('today');
     const [customStartDate, setCustomStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0]);
-    const [shifts, setShifts] = useState<any[]>([]); // Shifts for today
+    const [shifts, setShifts] = useState<any[]>([]);
 
     // Modal State
     const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false);
@@ -57,6 +57,9 @@ export default function AttendanceLogsPage() {
         site_id: "",
         reason: ""
     });
+
+    // Toast State
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     const [orgSettings, setOrgSettings] = useState<any>(null);
     const [isPeriodLocked, setIsPeriodLocked] = useState(false);
@@ -135,17 +138,22 @@ export default function AttendanceLogsPage() {
         const { data: empData } = await supabase.from('employees').select('id, first_name, last_name, job_title, is_active, avatar_url').eq('organization_id', orgId).order('last_name');
         const { data: siteData } = await supabase.from('sites').select('id, name').eq('organization_id', orgId);
 
-        // Fetch Today's Shifts
+        // Fetch Shifts (Last 7 days + Next 2 days)
         const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-        const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+        const pastDate = new Date(today);
+        pastDate.setDate(today.getDate() - 7);
+        const futureDate = new Date(today);
+        futureDate.setDate(today.getDate() + 2);
+
+        const startOfHistory = new Date(pastDate.setHours(0, 0, 0, 0)).toISOString();
+        const endOfFuture = new Date(futureDate.setHours(23, 59, 59, 999)).toISOString();
 
         const { data: shiftData } = await supabase
             .from('shifts')
             .select('*')
             .eq('organization_id', orgId)
-            .gte('start_time', startOfDay)
-            .lt('start_time', endOfDay);
+            .gte('start_time', startOfHistory)
+            .lt('start_time', endOfFuture);
 
         if (empData) setEmployees(empData);
         if (siteData) setSites(siteData);
@@ -178,7 +186,16 @@ export default function AttendanceLogsPage() {
         setManualEntryStatus("saving");
 
         // Combine Date & Time
-        const fullTimestamp = new Date(`${manualForm.date}T${manualForm.time}:00`).toISOString();
+        const entryDate = new Date(`${manualForm.date}T${manualForm.time}:00`);
+
+        // Validation: Prevent Future Entries
+        if (entryDate > new Date()) {
+            setManualEntryStatus("idle");
+            setToast({ message: t.dashboard?.futureEntryError || "Impossible de pointer dans le futur", type: "error" });
+            return;
+        }
+
+        const fullTimestamp = entryDate.toISOString();
 
         const payload = {
             organization_id: organizationId,
@@ -472,18 +489,31 @@ export default function AttendanceLogsPage() {
         ); // default to true if undefined
 
         // 2. ABSENCES (Today)
+        // 2. ABSENCES (Today)
         // Logic: Check if employee has a shift. If so, use shift start. If not, use global start.
         let absenceList: typeof employees = [];
         const startStr = orgSettings?.planning?.start_time || "08:00";
         const [startH, startM] = startStr.split(':').map(Number);
 
-        // Global Start Time Date Object
+        // Global Start Time Date Object for Today
         const workStart = new Date(today);
         workStart.setHours(startH, startM, 0, 0);
 
         absenceList = activeEmployees.map(emp => {
-            // Check for specific shift
-            const empShift = shifts.find(s => s.employee_id === emp.id);
+            // If already present (clocked in), not absent
+            if (uniqueEmployeesToday.has(emp.id)) return null;
+
+            // Check for specific shift TODAY
+            const empShift = shifts.find(s => {
+                const sDate = new Date(s.start_time);
+                const isSameDay = s.employee_id === emp.id &&
+                    sDate.getDate() === today.getDate() &&
+                    sDate.getMonth() === today.getMonth() &&
+                    sDate.getFullYear() === today.getFullYear();
+
+                return isSameDay;
+            });
+
             let expectedStart = startStr;
             let isLate = false;
 
@@ -492,11 +522,9 @@ export default function AttendanceLogsPage() {
                 isLate = today > shiftStart;
                 expectedStart = shiftStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
             } else {
+                // Fallback to Global Start
                 isLate = today > workStart;
             }
-
-            // Exclude if clocked in
-            if (uniqueEmployeesToday.has(emp.id)) return null;
 
             // Only return if actually late/absent based on their specific time
             if (isLate) {
@@ -504,6 +532,7 @@ export default function AttendanceLogsPage() {
             }
             return null;
         }).filter(Boolean) as any[];
+
 
         // 3. ANOMALIES (Past Missing Checkout)
         // Group logs by Employee -> Day (excluding today)
@@ -741,7 +770,9 @@ export default function AttendanceLogsPage() {
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                             <div className="flex-1">
-                                <h3 className="font-bold text-red-800 text-sm mb-1">{anomalies.length} {t.dashboard?.anomaliesTitle || "Anomalies Detected"}</h3>
+                                <h3 className="font-bold text-red-800 text-sm mb-1">
+                                    {anomalies.length} {anomalies.length > 1 ? (t.dashboard?.anomaliesTitle || "Anomalies Détectées") : "Anomalie Détectée"}
+                                </h3>
                                 <p className="text-xs text-red-600 mb-3">{t.dashboard?.anomaliesDesc || "The following employees forgot to clock out on previous days."}</p>
 
                                 <div className="space-y-2">
@@ -775,7 +806,7 @@ export default function AttendanceLogsPage() {
                                 <h3 className="font-bold text-orange-800 text-sm mb-1">
                                     {absences.length} {absences.length > 1 ? (t.dashboard?.absencesTitle || "Employés Absents") : "Employé Absent"}
                                 </h3>
-                                <p className="text-xs text-orange-600 mb-3">{t.dashboard?.absencesDesc || "Work day has started."}</p>
+                                <p className="text-xs text-orange-600 mb-3">{t.dashboard?.absencesDesc || "La journée a commencé. Ces employés n'ont pas encore pointé."}</p>
 
                                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                                     {absences.map((emp, idx) => (
@@ -793,14 +824,15 @@ export default function AttendanceLogsPage() {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+                            </div >
+                        </div >
+                    </div >
+                )
+                }
+            </div >
 
             {/* 0. STATS WIDGET */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" >
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div className="bg-purple-100 p-3 rounded-full text-purple-600">
                         <Users size={24} />
@@ -843,7 +875,7 @@ export default function AttendanceLogsPage() {
             </div >
 
             {/* 1.5 VIEW TOGGLE */}
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-end mb-4" >
                 <div className="bg-slate-100 p-1 rounded-lg flex items-center">
                     <button
                         onClick={() => setView('logs')}
@@ -864,7 +896,7 @@ export default function AttendanceLogsPage() {
                         {t.dashboard?.view?.reports || "Reports"}
                     </button>
                 </div>
-            </div>
+            </div >
 
             {/* 2. FILTERS */}
             <div className="flex flex-wrap gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm" >
@@ -925,149 +957,45 @@ export default function AttendanceLogsPage() {
             </div >
 
             {/* 3. LOGS TABLE OR TIMESHEETS */}
-            {view === 'timesheets' ? (
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.date || "Date"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.employee || "Employee"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.firstIn || "Start"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.lastOut || "End"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">{t.dashboard?.timesheet?.total || "Total Worked"}</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">{t.dashboard?.timesheet?.overtime || "Overtime"}</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {timesheetData.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-slate-500">No active timesheets for this period.</td></tr>
-                            ) : timesheetData.map(item => (
-                                <tr key={item.key} className="hover:bg-slate-50 transition-colors">
-                                    <td className="p-4 font-medium text-slate-700">{item.date.toLocaleDateString()}</td>
-                                    <td className="p-4">
-                                        <div className="font-bold text-slate-900">{item.employeeName}</div>
-                                        <div className="text-xs text-slate-500">{item.jobTitle}</div>
-                                    </td>
-                                    <td className="p-4 text-slate-600 font-mono text-xs">{item.firstIn?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
-                                    <td className="p-4 text-slate-600 font-mono text-xs">{item.lastOut?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
-                                    <td className="p-4 text-right">
-                                        <div className="font-bold text-slate-900 font-mono">{item.durationStr}</div>
-                                        {item.breakDeduction > 0 && (
-                                            <div className="text-xs text-amber-600 font-medium">(-{item.breakDeduction}m pause)</div>
-                                        )}
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        {item.overtimeMinutes > 0 ? (
-                                            <span className="bg-green-100 text-green-700 font-bold px-2 py-1 rounded text-xs">
-                                                {item.overtimeStr}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-300">-</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            ) : view === 'reports' ? (
-                <div className="space-y-6">
-                    {/* SUMMARY CARDS */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* TOTAL HOURS */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                                <Clock className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <div className="text-sm text-slate-500 font-medium">{t.dashboard?.report?.totalHours || "Total Heures"}</div>
-                                <div className="text-2xl font-bold text-slate-900">
-                                    {(() => {
-                                        const totalM = Math.round(reportData.reduce((acc, curr) => acc + curr.totalMin, 0));
-                                        const h = Math.floor(totalM / 60);
-                                        const m = Math.floor(totalM % 60);
-                                        return `${h}h${m.toString().padStart(2, '0')}`;
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* TOTAL OVERTIME */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                                <AlertCircle className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <div className="text-sm text-slate-500 font-medium">{t.dashboard?.report?.totalOvertime || "Heures Sup."}</div>
-                                <div className="text-2xl font-bold text-slate-900">
-                                    {(() => {
-                                        const totalM = Math.round(reportData.reduce((acc, curr) => acc + curr.overtimeMin, 0));
-                                        const h = Math.floor(totalM / 60);
-                                        const m = Math.floor(totalM % 60);
-                                        return `${h}h${m.toString().padStart(2, '0')}`;
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ACTIVE EMPLOYEES */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                <Users className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <div className="text-sm text-slate-500 font-medium">Effectif Actif</div>
-                                <div className="text-2xl font-bold text-slate-900">
-                                    {reportData.length}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
+            {
+                view === 'timesheets' ? (
                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-[#F8FAFC] border-b border-slate-200">
+                            <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t.dashboard?.report?.employee || "Employee"}</th>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t.dashboard?.report?.daysWorked || "Days Worked"}</th>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t.dashboard?.report?.totalHours || "Total Hours"}</th>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t.dashboard?.report?.totalOvertime || "Overtime"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.date || "Date"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.employee || "Employee"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.firstIn || "Start"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">{t.dashboard?.timesheet?.lastOut || "End"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">{t.dashboard?.timesheet?.total || "Total Worked"}</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">{t.dashboard?.timesheet?.overtime || "Overtime"}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {reportData.length === 0 ? (
-                                    <tr><td colSpan={4} className="p-8 text-center text-slate-500 italic">No data found for this period.</td></tr>
-                                ) : reportData.map(item => (
-                                    <tr key={item.id} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                                {timesheetData.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-slate-500">No active timesheets for this period.</td></tr>
+                                ) : timesheetData.map(item => (
+                                    <tr key={item.key} className="hover:bg-slate-50 transition-colors">
+                                        <td className="p-4 font-medium text-slate-700">{item.date.toLocaleDateString()}</td>
                                         <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                {item.avatar_url ? (
-                                                    <img src={item.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
-                                                ) : (
-                                                    <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs border border-slate-200">
-                                                        {item.name.charAt(0)}
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <div className="font-bold text-slate-900 text-sm">{item.name}</div>
-                                                    <div className="text-xs text-slate-500">{item.job}</div>
-                                                </div>
-                                            </div>
+                                            <div className="font-bold text-slate-900">{item.employeeName}</div>
+                                            <div className="text-xs text-slate-500">{item.jobTitle}</div>
                                         </td>
-                                        <td className="p-4 text-slate-700 font-medium text-sm">
-                                            <span className="bg-slate-100 px-2 py-1 rounded text-slate-600 font-bold text-xs">{item.days} jours</span>
+                                        <td className="p-4 text-slate-600 font-mono text-xs">{item.firstIn?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
+                                        <td className="p-4 text-slate-600 font-mono text-xs">{item.lastOut?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
+                                        <td className="p-4 text-right">
+                                            <div className="font-bold text-slate-900 font-mono">{item.durationStr}</div>
+                                            {item.breakDeduction > 0 && (
+                                                <div className="text-xs text-amber-600 font-medium">(-{item.breakDeduction}m pause)</div>
+                                            )}
                                         </td>
                                         <td className="p-4 text-right">
-                                            <div className="font-bold text-slate-900 font-mono text-base">{item.totalStr}</div>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            {item.overtimeMin > 0 ? (
-                                                <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold mono">
+                                            {item.overtimeMinutes > 0 ? (
+                                                <span className="bg-green-100 text-green-700 font-bold px-2 py-1 rounded text-xs">
                                                     {item.overtimeStr}
                                                 </span>
                                             ) : (
-                                                <span className="text-slate-300 font-mono text-sm">-</span>
+                                                <span className="text-slate-300">-</span>
                                             )}
                                         </td>
                                     </tr>
@@ -1075,367 +1003,476 @@ export default function AttendanceLogsPage() {
                             </tbody>
                         </table>
                     </div>
-                </div>
-            ) : (
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" >
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Employee</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Movement</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Photo Proof</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Time</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase">Source</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {isLoading ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-slate-500">Loading...</td></tr>
-                            ) : filteredLogs.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-slate-500">No logs found.</td></tr>
-                            ) : filteredLogs.map((log) => {
-                                // Only calculate offline sync if it is NOT a manual entry
-                                const isOfflineSync = !log.is_manual_entry && (Math.abs(new Date(log.created_at).getTime() - new Date(log.timestamp).getTime()) / 60000 > 5);
-                                const logDate = new Date(log.timestamp);
+                ) : view === 'reports' ? (
+                    <div className="space-y-6">
+                        {/* SUMMARY CARDS */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* TOTAL HOURS */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                    <Clock className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-slate-500 font-medium">{t.dashboard?.report?.totalHours || "Total Heures"}</div>
+                                    <div className="text-2xl font-bold text-slate-900">
+                                        {(() => {
+                                            const totalM = Math.round(reportData.reduce((acc, curr) => acc + curr.totalMin, 0));
+                                            const h = Math.floor(totalM / 60);
+                                            const m = Math.floor(totalM % 60);
+                                            return `${h}h${m.toString().padStart(2, '0')}`;
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
 
-                                return (
-                                    <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
+                            {/* TOTAL OVERTIME */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                                    <AlertCircle className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-slate-500 font-medium">{t.dashboard?.report?.totalOvertime || "Heures Sup."}</div>
+                                    <div className="text-2xl font-bold text-slate-900">
+                                        {(() => {
+                                            const totalM = Math.round(reportData.reduce((acc, curr) => acc + curr.overtimeMin, 0));
+                                            const h = Math.floor(totalM / 60);
+                                            const m = Math.floor(totalM % 60);
+                                            return `${h}h${m.toString().padStart(2, '0')}`;
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
 
-                                        {/* EMPLOYEE */}
-                                        <td className="p-4">
-                                            <div className="font-bold text-slate-900">
-                                                {log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : "Unknown"}
-                                            </div>
-                                            <div className="text-xs text-slate-500 uppercase">
-                                                {log.employee?.job_title || "No Title"}
-                                            </div>
-                                        </td>
+                            {/* ACTIVE EMPLOYEES */}
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                    <Users className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-slate-500 font-medium">Effectif Actif</div>
+                                    <div className="text-2xl font-bold text-slate-900">
+                                        {reportData.length}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                        {/* TYPE (IN/OUT) */}
-                                        <td className="p-4">
-                                            {log.type === 'IN' ? (
-                                                <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">
-                                                    <ArrowRightCircle className="h-3 w-3" /> CLOCK IN
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-bold">
-                                                    <ArrowLeftCircle className="h-3 w-3" /> CLOCK OUT
-                                                </span>
-                                            )}
-                                        </td>
 
-                                        {/* PHOTO (Zoom on hover) */}
-                                        <td className="p-4">
-                                            {log.photo ? (
-                                                <div className="relative group/photo h-10 w-10">
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img
-                                                        src={log.photo}
-                                                        alt="Proof"
-                                                        className="h-10 w-10 rounded object-cover border border-slate-200 cursor-zoom-in"
-                                                    />
-                                                    {/* Tooltip Zoom Image (On hover) */}
-                                                    <div className="absolute left-12 top-[-50px] hidden group-hover/photo:block z-50">
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-[#F8FAFC] border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t.dashboard?.report?.employee || "Employee"}</th>
+                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t.dashboard?.report?.daysWorked || "Days Worked"}</th>
+                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t.dashboard?.report?.totalHours || "Total Hours"}</th>
+                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t.dashboard?.report?.totalOvertime || "Overtime"}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {reportData.length === 0 ? (
+                                        <tr><td colSpan={4} className="p-8 text-center text-slate-500 italic">No data found for this period.</td></tr>
+                                    ) : reportData.map(item => (
+                                        <tr key={item.id} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-3">
+                                                    {item.avatar_url ? (
+                                                        <img src={item.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs border border-slate-200">
+                                                            {item.name.charAt(0)}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="font-bold text-slate-900 text-sm">{item.name}</div>
+                                                        <div className="text-xs text-slate-500">{item.job}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-slate-700 font-medium text-sm">
+                                                <span className="bg-slate-100 px-2 py-1 rounded text-slate-600 font-bold text-xs">{item.days} jours</span>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <div className="font-bold text-slate-900 font-mono text-base">{item.totalStr}</div>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                {item.overtimeMin > 0 ? (
+                                                    <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold mono">
+                                                        {item.overtimeStr}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-300 font-mono text-sm">-</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" >
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Employee</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Movement</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Photo Proof</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Time</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Source</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {isLoading ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-slate-500">Loading...</td></tr>
+                                ) : filteredLogs.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-slate-500">No logs found.</td></tr>
+                                ) : filteredLogs.map((log) => {
+                                    // Only calculate offline sync if it is NOT a manual entry
+                                    const isOfflineSync = !log.is_manual_entry && (Math.abs(new Date(log.created_at).getTime() - new Date(log.timestamp).getTime()) / 60000 > 5);
+                                    const logDate = new Date(log.timestamp);
+
+                                    return (
+                                        <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
+
+                                            {/* EMPLOYEE */}
+                                            <td className="p-4">
+                                                <div className="font-bold text-slate-900">
+                                                    {log.employee ? `${log.employee.first_name} ${log.employee.last_name}` : "Unknown"}
+                                                </div>
+                                                <div className="text-xs text-slate-500 uppercase">
+                                                    {log.employee?.job_title || "No Title"}
+                                                </div>
+                                            </td>
+
+                                            {/* TYPE (IN/OUT) */}
+                                            <td className="p-4">
+                                                {log.type === 'IN' ? (
+                                                    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">
+                                                        <ArrowRightCircle className="h-3 w-3" /> CLOCK IN
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-bold">
+                                                        <ArrowLeftCircle className="h-3 w-3" /> CLOCK OUT
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            {/* PHOTO (Zoom on hover) */}
+                                            <td className="p-4">
+                                                {log.photo ? (
+                                                    <div className="relative group/photo h-10 w-10">
                                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                                         <img
                                                             src={log.photo}
-                                                            alt="Zoom"
-                                                            className="h-32 w-32 rounded-lg border-2 border-white shadow-xl object-cover"
+                                                            alt="Proof"
+                                                            className="h-10 w-10 rounded object-cover border border-slate-200 cursor-zoom-in"
                                                         />
+                                                        {/* Tooltip Zoom Image (On hover) */}
+                                                        <div className="absolute left-12 top-[-50px] hidden group-hover/photo:block z-50">
+                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                            <img
+                                                                src={log.photo}
+                                                                alt="Zoom"
+                                                                className="h-32 w-32 rounded-lg border-2 border-white shadow-xl object-cover"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-400 italic">No Photo</span>
-                                            )}
-                                        </td>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 italic">No Photo</span>
+                                                )}
+                                            </td>
 
-                                        {/* TIME & STATUS */}
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <div>
-                                                    <div className="font-mono font-bold text-slate-800 text-base">
-                                                        {logDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                            {/* TIME & STATUS */}
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div>
+                                                        <div className="font-mono font-bold text-slate-800 text-base">
+                                                            {logDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500">
+                                                            {logDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-xs text-slate-500">
-                                                        {logDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                                    </div>
-                                                </div>
 
-                                                {/* LATE INDICATOR */}
-                                                {(() => {
-                                                    if (log.type !== 'IN') return null;
-                                                    // Default rules if settings not loaded yet
-                                                    // Ideally we use orgSettings.planning.start_time, but per analysis it might be implicit
-                                                    // Let's assume 08:00 AM start if not present
-                                                    const startStr = orgSettings?.planning?.start_time || "08:00";
-                                                    const tolerance = orgSettings?.attendance?.tolerance_minutes || 5;
+                                                    {/* LATE INDICATOR */}
+                                                    {(() => {
+                                                        if (log.type !== 'IN') return null;
+                                                        // Default rules if settings not loaded yet
+                                                        // Ideally we use orgSettings.planning.start_time, but per analysis it might be implicit
+                                                        // Let's assume 08:00 AM start if not present
+                                                        const startStr = orgSettings?.planning?.start_time || "08:00";
+                                                        const tolerance = orgSettings?.attendance?.tolerance_minutes || 5;
 
-                                                    const [startH, startM] = startStr.split(':').map(Number);
-                                                    const logH = logDate.getHours();
-                                                    const logM = logDate.getMinutes();
+                                                        const [startH, startM] = startStr.split(':').map(Number);
+                                                        const logH = logDate.getHours();
+                                                        const logM = logDate.getMinutes();
 
-                                                    const startMinutes = startH * 60 + startM;
-                                                    const logMinutes = logH * 60 + logM;
+                                                        const startMinutes = startH * 60 + startM;
+                                                        const logMinutes = logH * 60 + logM;
 
-                                                    if (logMinutes > startMinutes + tolerance) {
-                                                        const diff = logMinutes - startMinutes;
-                                                        return (
-                                                            <div className="relative group/late">
-                                                                <Clock className="h-4 w-4 text-red-500 cursor-help" />
-                                                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg opacity-0 group-hover/late:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                                                                    Late arrival (+{diff} min)
+                                                        if (logMinutes > startMinutes + tolerance) {
+                                                            const diff = logMinutes - startMinutes;
+                                                            return (
+                                                                <div className="relative group/late">
+                                                                    <Clock className="h-4 w-4 text-red-500 cursor-help" />
+                                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg opacity-0 group-hover/late:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                                                                        Late arrival (+{diff} min)
+                                                                    </div>
                                                                 </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                </div>
+                                            </td>
+
+                                            {/* SOURCE & SYNC */}
+                                            <td className="p-4">
+                                                <div className="text-sm text-slate-600">{log.site?.name || "N/A"}</div>
+                                                <div className="text-xs text-slate-400 flex items-center gap-1">
+                                                    {log.kiosk?.name || "Manual"}
+
+                                                    {/* Offline Indicator */}
+                                                    {isOfflineSync && (
+                                                        <div className="group/offline relative">
+                                                            <CloudOff className="h-3 w-3 text-amber-500 cursor-help" />
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/offline:block bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
+                                                                Data synchronized later (Offline)
                                                             </div>
-                                                        );
-                                                    }
-                                                    return null;
-                                                })()}
-                                            </div>
-                                        </td>
-
-                                        {/* SOURCE & SYNC */}
-                                        <td className="p-4">
-                                            <div className="text-sm text-slate-600">{log.site?.name || "N/A"}</div>
-                                            <div className="text-xs text-slate-400 flex items-center gap-1">
-                                                {log.kiosk?.name || "Manual"}
-
-                                                {/* Offline Indicator */}
-                                                {isOfflineSync && (
-                                                    <div className="group/offline relative">
-                                                        <CloudOff className="h-3 w-3 text-amber-500 cursor-help" />
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/offline:block bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
-                                                            Data synchronized later (Offline)
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    )}
 
-                                                {/* Correction/Manual Reason Indicator */}
-                                                {log.correction_reason && (
-                                                    <div className="group/reason relative">
-                                                        <AlertCircle className="h-3 w-3 text-blue-500 cursor-help" />
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/reason:block bg-black text-white text-[10px] px-2 py-1 rounded w-max max-w-[200px] z-10 text-center">
-                                                            Reason: {log.correction_reason}
+                                                    {/* Correction/Manual Reason Indicator */}
+                                                    {log.correction_reason && (
+                                                        <div className="group/reason relative">
+                                                            <AlertCircle className="h-3 w-3 text-blue-500 cursor-help" />
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/reason:block bg-black text-white text-[10px] px-2 py-1 rounded w-max max-w-[200px] z-10 text-center">
+                                                                Reason: {log.correction_reason}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
+                                                    )}
+                                                </div>
+                                            </td>
 
-                                        {/* ACTIONS */}
-                                        <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => handleCorrect(log)}
-                                                className="text-sm text-slate-400 hover:text-[#0F4C5C] font-medium underline"
-                                            >
-                                                Correct
-                                            </button>
-                                        </td>
+                                            {/* ACTIONS */}
+                                            <td className="p-4 text-right">
+                                                <button
+                                                    onClick={() => handleCorrect(log)}
+                                                    className="text-sm text-slate-400 hover:text-[#0F4C5C] font-medium underline"
+                                                >
+                                                    Correct
+                                                </button>
+                                            </td>
 
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )
+            }
 
             {/* MANUAL ENTRY MODAL */}
-            {isManualEntryModalOpen && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-                        {/* HEADER */}
-                        <div className="bg-[#0F4C5C] px-6 py-4 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-3">
-                                <Plus className="h-5 w-5 text-[#FFC107]" strokeWidth={3} />
-                                <h3 className="text-lg font-bold text-white tracking-wide">
-                                    {editingId ? "Correction Pointage" : (t.dashboard?.manualEntry || "Ajout Manuel")}
-                                </h3>
+            {
+                isManualEntryModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                            {/* HEADER */}
+                            <div className="bg-[#0F4C5C] px-6 py-4 flex justify-between items-center shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <Plus className="h-5 w-5 text-[#FFC107]" strokeWidth={3} />
+                                    <h3 className="text-lg font-bold text-white tracking-wide">
+                                        {editingId ? "Correction Pointage" : (t.dashboard?.manualEntry || "Ajout Manuel")}
+                                    </h3>
+                                </div>
+                                <button
+                                    onClick={() => setIsManualEntryModalOpen(false)}
+                                    className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+                                >
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setIsManualEntryModalOpen(false)}
-                                className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
 
-                        {/* BODY */}
-                        <div className="p-6 overflow-y-auto custom-scrollbar">
-                            <form id="manual-entry-form" onSubmit={handleManualEntrySave} className="space-y-5">
+                            {/* BODY */}
+                            <div className="p-6 overflow-y-auto custom-scrollbar">
+                                <form id="manual-entry-form" onSubmit={handleManualEntrySave} className="space-y-5">
 
-                                {/* Employee (Searchable Dropdown) */}
-                                <div className="relative">
-                                    <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.dashboard?.report?.employee || "Employé"}</label>
+                                    {/* Employee (Searchable Dropdown) */}
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Search className="h-4 w-4 text-slate-400" />
+                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.dashboard?.report?.employee || "Employé"}</label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <Search className="h-4 w-4 text-slate-400" />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium placeholder:font-normal"
+                                                placeholder="Rechercher un employé..."
+                                                value={employeeSearch}
+                                                onChange={e => {
+                                                    setEmployeeSearch(e.target.value);
+                                                    setIsEmployeeDropdownOpen(true);
+                                                    // Clear selection if user types (must select from list)
+                                                    if (manualForm.employee_id) setManualForm({ ...manualForm, employee_id: "" });
+                                                }}
+                                                onFocus={() => setIsEmployeeDropdownOpen(true)}
+                                                // Handle blur with delay to allow click on item
+                                                onBlur={() => setTimeout(() => setIsEmployeeDropdownOpen(false), 200)}
+                                                required={!manualForm.employee_id} // Required if no ID selected
+                                            />
+                                            {/* Dropdown Icon */}
+                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <ArrowRightCircle className="h-4 w-4 text-slate-300 rotate-90" />
+                                            </div>
                                         </div>
-                                        <input
-                                            type="text"
-                                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium placeholder:font-normal"
-                                            placeholder="Rechercher un employé..."
-                                            value={employeeSearch}
-                                            onChange={e => {
-                                                setEmployeeSearch(e.target.value);
-                                                setIsEmployeeDropdownOpen(true);
-                                                // Clear selection if user types (must select from list)
-                                                if (manualForm.employee_id) setManualForm({ ...manualForm, employee_id: "" });
-                                            }}
-                                            onFocus={() => setIsEmployeeDropdownOpen(true)}
-                                            // Handle blur with delay to allow click on item
-                                            onBlur={() => setTimeout(() => setIsEmployeeDropdownOpen(false), 200)}
-                                            required={!manualForm.employee_id} // Required if no ID selected
-                                        />
-                                        {/* Dropdown Icon */}
-                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                            <ArrowRightCircle className="h-4 w-4 text-slate-300 rotate-90" />
-                                        </div>
-                                    </div>
 
-                                    {/* DROPDOWN LIST */}
-                                    {isEmployeeDropdownOpen && (
-                                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
-                                            {employees
-                                                .filter(e => {
-                                                    const fullName = `${e.first_name} ${e.last_name}`.toLowerCase();
-                                                    return fullName.includes(employeeSearch.toLowerCase());
-                                                })
-                                                .length === 0 ? (
-                                                <div className="p-3 text-sm text-slate-500 text-center italic">Aucun employé trouvé.</div>
-                                            ) : (
-                                                employees
+                                        {/* DROPDOWN LIST */}
+                                        {isEmployeeDropdownOpen && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                                {employees
                                                     .filter(e => {
                                                         const fullName = `${e.first_name} ${e.last_name}`.toLowerCase();
                                                         return fullName.includes(employeeSearch.toLowerCase());
                                                     })
-                                                    .map(e => (
-                                                        <div
-                                                            key={e.id}
-                                                            className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 border-b border-slate-50 last:border-0 transition-colors"
-                                                            onMouseDown={(ev) => {
-                                                                ev.preventDefault(); // Prevent input blur
-                                                                setManualForm({ ...manualForm, employee_id: e.id });
-                                                                setEmployeeSearch(`${e.first_name} ${e.last_name}`);
-                                                                setIsEmployeeDropdownOpen(false);
-                                                            }}
-                                                        >
-                                                            <div className="h-8 w-8 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] flex items-center justify-center font-bold text-xs">
-                                                                {e.first_name.charAt(0)}{e.last_name.charAt(0)}
+                                                    .length === 0 ? (
+                                                    <div className="p-3 text-sm text-slate-500 text-center italic">Aucun employé trouvé.</div>
+                                                ) : (
+                                                    employees
+                                                        .filter(e => {
+                                                            const fullName = `${e.first_name} ${e.last_name}`.toLowerCase();
+                                                            return fullName.includes(employeeSearch.toLowerCase());
+                                                        })
+                                                        .map(e => (
+                                                            <div
+                                                                key={e.id}
+                                                                className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 border-b border-slate-50 last:border-0 transition-colors"
+                                                                onMouseDown={(ev) => {
+                                                                    ev.preventDefault(); // Prevent input blur
+                                                                    setManualForm({ ...manualForm, employee_id: e.id });
+                                                                    setEmployeeSearch(`${e.first_name} ${e.last_name}`);
+                                                                    setIsEmployeeDropdownOpen(false);
+                                                                }}
+                                                            >
+                                                                <div className="h-8 w-8 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] flex items-center justify-center font-bold text-xs">
+                                                                    {e.first_name.charAt(0)}{e.last_name.charAt(0)}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-slate-800 text-sm">{e.first_name} {e.last_name}</div>
+                                                                    <div className="text-xs text-slate-500">{e.job_title || "Employé"}</div>
+                                                                </div>
+                                                                {manualForm.employee_id === e.id && (
+                                                                    <CheckCircle className="h-4 w-4 text-[#0F4C5C] ml-auto" />
+                                                                )}
                                                             </div>
-                                                            <div>
-                                                                <div className="font-bold text-slate-800 text-sm">{e.first_name} {e.last_name}</div>
-                                                                <div className="text-xs text-slate-500">{e.job_title || "Employé"}</div>
-                                                            </div>
-                                                            {manualForm.employee_id === e.id && (
-                                                                <CheckCircle className="h-4 w-4 text-[#0F4C5C] ml-auto" />
-                                                            )}
-                                                        </div>
-                                                    ))
-                                            )}
+                                                        ))
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Row: Type & Site */}
+                                    <div className="grid grid-cols-2 gap-5">
+                                        {/* Type Toggle */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-800 mb-1.5">Type</label>
+                                            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setManualForm(prev => ({ ...prev, type: 'IN' }))}
+                                                    className={`flex-1 py-2 rounded-md text-xs font-extrabold tracking-wide uppercase transition-all ${manualForm.type === 'IN' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    Entrée
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setManualForm(prev => ({ ...prev, type: 'OUT' }))}
+                                                    className={`flex-1 py-2 rounded-md text-xs font-extrabold tracking-wide uppercase transition-all ${manualForm.type === 'OUT' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    Sortie
+                                                </button>
+                                            </div>
                                         </div>
+
+                                        {/* Site Select */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-800 mb-1.5">Site</label>
+                                            <select
+                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
+                                                value={manualForm.site_id}
+                                                onChange={e => setManualForm({ ...manualForm, site_id: e.target.value })}
+                                            >
+                                                <option value="">Sélectionner...</option>
+                                                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Row: Date & Time */}
+                                    <div className="grid grid-cols-2 gap-5">
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.dashboard?.timesheet?.date || "Date"}</label>
+                                            <input
+                                                type="date"
+                                                required
+                                                max={new Date().toISOString().split('T')[0]} // Restricted to today
+                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
+                                                value={manualForm.date}
+                                                onChange={e => setManualForm({ ...manualForm, date: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-800 mb-1.5">Heure</label>
+                                            <input
+                                                type="time"
+                                                required
+                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm text-center"
+                                                value={manualForm.time}
+                                                onChange={e => setManualForm({ ...manualForm, time: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Reason */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                                            Motif de correction <span className="text-red-500">*</span>
+                                        </label>
+                                        <textarea
+                                            required
+                                            className="w-full px-4 py-3 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white text-sm resize-none min-h-[80px]"
+                                            placeholder="Ex: Oubli de code, Terminal hors service..."
+                                            value={manualForm.reason}
+                                            onChange={e => setManualForm({ ...manualForm, reason: e.target.value })}
+                                        />
+                                        <p className="text-xs text-slate-400 mt-1.5">Ce motif apparaîtra dans l'historique d'audit.</p>
+                                    </div>
+
+                                </form>
+                            </div>
+
+                            {/* FOOTER */}
+                            <div className="p-6 pt-2 bg-white rounded-b-xl shrink-0">
+                                <button
+                                    type="submit"
+                                    form="manual-entry-form"
+                                    disabled={manualEntryStatus === 'saving'}
+                                    className="w-full bg-[#FFC107] hover:bg-[#e0a800] text-[#0F4C5C] font-extrabold text-base py-3.5 rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-70 flex justify-center items-center gap-2"
+                                >
+                                    {manualEntryStatus === 'saving' ? (
+                                        <>
+                                            <Loader2 className="animate-spin h-5 w-5" /> Enregistrement...
+                                        </>
+                                    ) : (
+                                        "Enregistrer le pointage"
                                     )}
-                                </div>
-
-                                {/* Row: Type & Site */}
-                                <div className="grid grid-cols-2 gap-5">
-                                    {/* Type Toggle */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">Type</label>
-                                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-                                            <button
-                                                type="button"
-                                                onClick={() => setManualForm(prev => ({ ...prev, type: 'IN' }))}
-                                                className={`flex-1 py-2 rounded-md text-xs font-extrabold tracking-wide uppercase transition-all ${manualForm.type === 'IN' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                            >
-                                                Entrée
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setManualForm(prev => ({ ...prev, type: 'OUT' }))}
-                                                className={`flex-1 py-2 rounded-md text-xs font-extrabold tracking-wide uppercase transition-all ${manualForm.type === 'OUT' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                            >
-                                                Sortie
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Site Select */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">Site</label>
-                                        <select
-                                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
-                                            value={manualForm.site_id}
-                                            onChange={e => setManualForm({ ...manualForm, site_id: e.target.value })}
-                                        >
-                                            <option value="">Sélectionner...</option>
-                                            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Row: Date & Time */}
-                                <div className="grid grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.dashboard?.timesheet?.date || "Date"}</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
-                                            value={manualForm.date}
-                                            onChange={e => setManualForm({ ...manualForm, date: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-800 mb-1.5">Heure</label>
-                                        <input
-                                            type="time"
-                                            required
-                                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm text-center"
-                                            value={manualForm.time}
-                                            onChange={e => setManualForm({ ...manualForm, time: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Reason */}
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-800 mb-1.5">
-                                        Motif de correction <span className="text-red-500">*</span>
-                                    </label>
-                                    <textarea
-                                        required
-                                        className="w-full px-4 py-3 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white text-sm resize-none min-h-[80px]"
-                                        placeholder="Ex: Oubli de code, Terminal hors service..."
-                                        value={manualForm.reason}
-                                        onChange={e => setManualForm({ ...manualForm, reason: e.target.value })}
-                                    />
-                                    <p className="text-xs text-slate-400 mt-1.5">Ce motif apparaîtra dans l'historique d'audit.</p>
-                                </div>
-
-                            </form>
-                        </div>
-
-                        {/* FOOTER */}
-                        <div className="p-6 pt-2 bg-white rounded-b-xl shrink-0">
-                            <button
-                                type="submit"
-                                form="manual-entry-form"
-                                disabled={manualEntryStatus === 'saving'}
-                                className="w-full bg-[#FFC107] hover:bg-[#e0a800] text-[#0F4C5C] font-extrabold text-base py-3.5 rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-70 flex justify-center items-center gap-2"
-                            >
-                                {manualEntryStatus === 'saving' ? (
-                                    <>
-                                        <Loader2 className="animate-spin h-5 w-5" /> Enregistrement...
-                                    </>
-                                ) : (
-                                    "Enregistrer le pointage"
-                                )}
-                            </button>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
         </div >
     );
