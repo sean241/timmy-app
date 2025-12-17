@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Plus, Search, MapPin, Phone, Eye, EyeOff, X, Camera, RefreshCw, Printer, User, Archive, Mail, Upload, Pencil, AlertCircle, FileSpreadsheet, Download, CheckCircle, FileText, Loader2, ArrowRight, Shield } from "lucide-react";
 import Webcam from "react-webcam";
+import Image from "next/image";
 import * as XLSX from 'xlsx';
 import QRCode from "react-qr-code";
 import Toast from "@/components/Toast";
@@ -1130,7 +1131,7 @@ export default function EmployeesPage() {
                                 <h2 className="text-2xl font-bold m-0">Timmy</h2>
                                 <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-24 h-24 rounded-full bg-white p-1 shadow-lg">
                                     {badgeEmployee.avatar_url ? (
-                                        <img src={badgeEmployee.avatar_url} alt="Avatar" className="w-full h-full rounded-full object-cover bg-gray-100" />
+                                        <Image src={badgeEmployee.avatar_url} alt="Avatar" width={96} height={96} className="w-full h-full rounded-full object-cover bg-gray-100" unoptimized />
                                     ) : (
                                         <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center text-3xl">👤</div>
                                     )}
