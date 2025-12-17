@@ -832,7 +832,7 @@ export default function AttendanceLogsPage() {
             </div >
 
             {/* 0. STATS WIDGET */}
-            < div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" >
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div className="bg-purple-100 p-3 rounded-full text-purple-600">
                         <Users size={24} />
@@ -875,7 +875,7 @@ export default function AttendanceLogsPage() {
             </div >
 
             {/* 1.5 VIEW TOGGLE */}
-            < div className="flex justify-end mb-4" >
+            <div className="flex justify-end mb-4" >
                 <div className="bg-slate-100 p-1 rounded-lg flex items-center">
                     <button
                         onClick={() => setView('logs')}
@@ -899,7 +899,7 @@ export default function AttendanceLogsPage() {
             </div >
 
             {/* 2. FILTERS */}
-            < div className="flex flex-wrap gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm" >
+            <div className="flex flex-wrap gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm" >
                 <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded border border-slate-200 w-full sm:w-auto">
                     <Search className="h-4 w-4 text-slate-400" />
                     <input
