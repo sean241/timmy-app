@@ -43,6 +43,7 @@ export default function AttendanceLogsPage() {
     const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'last_week' | 'month' | 'custom'>('today');
     const [customStartDate, setCustomStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [shifts, setShifts] = useState<any[]>([]);
 
     // Modal State
     const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false);
@@ -56,6 +57,9 @@ export default function AttendanceLogsPage() {
         site_id: "",
         reason: ""
     });
+
+    // Toast State
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     const [orgSettings, setOrgSettings] = useState<any>(null);
     const [isPeriodLocked, setIsPeriodLocked] = useState(false);
@@ -134,8 +138,26 @@ export default function AttendanceLogsPage() {
         const { data: empData } = await supabase.from('employees').select('id, first_name, last_name, job_title, is_active, avatar_url').eq('organization_id', orgId).order('last_name');
         const { data: siteData } = await supabase.from('sites').select('id, name').eq('organization_id', orgId);
 
+        // Fetch Shifts (Last 7 days + Next 2 days)
+        const today = new Date();
+        const pastDate = new Date(today);
+        pastDate.setDate(today.getDate() - 7);
+        const futureDate = new Date(today);
+        futureDate.setDate(today.getDate() + 2);
+
+        const startOfHistory = new Date(pastDate.setHours(0, 0, 0, 0)).toISOString();
+        const endOfFuture = new Date(futureDate.setHours(23, 59, 59, 999)).toISOString();
+
+        const { data: shiftData } = await supabase
+            .from('shifts')
+            .select('*')
+            .eq('organization_id', orgId)
+            .gte('start_time', startOfHistory)
+            .lt('start_time', endOfFuture);
+
         if (empData) setEmployees(empData);
         if (siteData) setSites(siteData);
+        if (shiftData) setShifts(shiftData);
     };
 
     const handleCorrect = (log: Log) => {
@@ -467,18 +489,47 @@ export default function AttendanceLogsPage() {
         ); // default to true if undefined
 
         // 2. ABSENCES (Today)
-        // Only relevant if work day has started.
         let absenceList: typeof employees = [];
         const startStr = orgSettings?.planning?.start_time || "08:00";
         const [startH, startM] = startStr.split(':').map(Number);
+
+        // Global Start Time Date Object for Today
         const workStart = new Date(today);
         workStart.setHours(startH, startM, 0, 0);
 
-        // Add small buffer (e.g. 15 mins) before declaring total absence, or just strictly after start time?
-        // Let's use start time.
-        if (today > workStart) {
-            absenceList = activeEmployees.filter(emp => !uniqueEmployeesToday.has(emp.id));
-        }
+        absenceList = activeEmployees.map(emp => {
+            // If already present (clocked in), not absent
+            if (uniqueEmployeesToday.has(emp.id)) return null;
+
+            // Check for specific shift TODAY
+            const empShift = shifts.find(s => {
+                const sDate = new Date(s.start_time);
+                const isSameDay = s.employee_id === emp.id &&
+                    sDate.getDate() === today.getDate() &&
+                    sDate.getMonth() === today.getMonth() &&
+                    sDate.getFullYear() === today.getFullYear();
+
+                return isSameDay;
+            });
+
+            let expectedStart = startStr;
+            let isLate = false;
+
+            if (empShift) {
+                const shiftStart = new Date(empShift.start_time);
+                isLate = today > shiftStart;
+                expectedStart = shiftStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                // Fallback to Global Start
+                isLate = today > workStart;
+            }
+
+            // Only return if actually late/absent based on their specific time
+            if (isLate) {
+                return { ...emp, expectedStart };
+            }
+            return null;
+        }).filter(Boolean) as any[];
 
         // 3. ANOMALIES (Past Missing Checkout)
         // Group logs by Employee -> Day (excluding today)
@@ -716,7 +767,9 @@ export default function AttendanceLogsPage() {
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                             <div className="flex-1">
-                                <h3 className="font-bold text-red-800 text-sm mb-1">{anomalies.length} {t.dashboard?.anomaliesTitle || "Anomalies Detected"}</h3>
+                                <h3 className="font-bold text-red-800 text-sm mb-1">
+                                    {anomalies.length} {anomalies.length > 1 ? (t.dashboard?.anomaliesTitle || "Anomalies Détectées") : "Anomalie Détectée"}
+                                </h3>
                                 <p className="text-xs text-red-600 mb-3">{t.dashboard?.anomaliesDesc || "The following employees forgot to clock out on previous days."}</p>
 
                                 <div className="space-y-2">
@@ -747,8 +800,10 @@ export default function AttendanceLogsPage() {
                         <div className="flex items-start gap-3">
                             <Clock className="h-5 w-5 text-orange-600 mt-0.5" />
                             <div className="flex-1">
-                                <h3 className="font-bold text-orange-800 text-sm mb-1">{absences.length} {t.dashboard?.absencesTitle || "Absent Employees Today"}</h3>
-                                <p className="text-xs text-orange-600 mb-3">{t.dashboard?.absencesDesc || "Work day has started."} ({t.dashboard?.dayStartedAt || "Started at"} {orgSettings?.planning?.start_time || "08:00"})</p>
+                                <h3 className="font-bold text-orange-800 text-sm mb-1">
+                                    {absences.length} {absences.length > 1 ? (t.dashboard?.absencesTitle || "Employés Absents") : "Employé Absent"}
+                                </h3>
+                                <p className="text-xs text-orange-600 mb-3">{t.dashboard?.absencesDesc || "La journée a commencé. Ces employés n'ont pas encore pointé."}</p>
 
                                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                                     {absences.map((emp, idx) => (
@@ -758,7 +813,7 @@ export default function AttendanceLogsPage() {
                                                     {emp.first_name?.[0]}{emp.last_name?.[0]}
                                                 </div>
                                                 <span className="font-bold text-slate-800">{emp.first_name} {emp.last_name}</span>
-                                                <span className="text-xs text-slate-400">{emp.job_title}</span>
+                                                <span className="text-xs text-slate-400">{emp.job_title} • Attendu à {emp.expectedStart}</span>
                                             </div>
                                             <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">
                                                 {t.dashboard?.absentTag || "Absent"}
@@ -1354,6 +1409,7 @@ export default function AttendanceLogsPage() {
                                         <input
                                             type="date"
                                             required
+                                            max={new Date().toISOString().split('T')[0]} // Restricted to today
                                             className="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium text-sm"
                                             value={manualForm.date}
                                             onChange={e => setManualForm({ ...manualForm, date: e.target.value })}
