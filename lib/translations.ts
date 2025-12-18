@@ -327,7 +327,7 @@ export const translations = {
             offlineSyncs: "Synchros Hors Ligne",
             anomaliesTitle: "Anomalies Détectées",
             anomaliesDesc: "Les employés suivants ont oublié de pointer la sortie.",
-            fixBtn: "Corriger (18:00)",
+            fixBtn: "Corriger",
             absencesTitle: "Employés Absents",
             absencesDesc: "La journée a commencé. Ces employés n'ont pas encore pointé.",
             absentTag: "Absent",
@@ -1034,7 +1034,7 @@ export const translations = {
             offlineSyncs: "Offline Syncs",
             anomaliesTitle: "Anomalies Detected",
             anomaliesDesc: "The following employees forgot to clock out on previous days.",
-            fixBtn: "Fix (Set 18:00)",
+            fixBtn: "Fix",
             absencesTitle: "Absent Employees",
             absencesDesc: "Work day has started. These employees have not clocked in yet.",
             absentTag: "Absent",
@@ -1423,6 +1423,7 @@ export const translations = {
                 lunchDuration: {
                     min30: "30 min",
                     min45: "45 min",
+
                     hour1: "1 hour",
                     min90: "1h30"
                 },
