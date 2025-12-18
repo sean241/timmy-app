@@ -118,10 +118,11 @@ export default function KioskPage() {
         const loadConfig = async () => {
             const storedOrgName = await db.local_config.get("org_name");
             const storedSiteName = await db.local_config.get("site_name");
-            // const storedOrgLogo = await db.local_config.get("org_logo");
+            const storedOrgLogo = await db.local_config.get("org_logo");
 
             if (storedOrgName?.value && typeof storedOrgName.value === 'string') setOrgName(storedOrgName.value);
             if (storedSiteName?.value && typeof storedSiteName.value === 'string') setSiteName(storedSiteName.value);
+            if (storedOrgLogo?.value && typeof storedOrgLogo.value === 'string') setOrgLogo(storedOrgLogo.value);
         };
         loadConfig();
     }, []);
@@ -264,21 +265,23 @@ export default function KioskPage() {
             const configResult = await fetchKioskConfig(kioskId);
 
             if (configResult.success && configResult.config) {
-                const { organization_id, site_id, organization_name, site_name, kiosk_name } = configResult.config;
+                const { organization_id, site_id, organization_name, site_name, kiosk_name, organization_logo } = configResult.config;
 
                 // Update Local Config
                 await db.local_config.bulkPut([
                     { key: "organization_id", value: organization_id },
                     { key: "site_id", value: site_id },
                     { key: "org_name", value: organization_name },
+                    { key: "org_logo", value: organization_logo || "" },
                     { key: "site_name", value: site_name },
                     { key: "kiosk_name", value: kiosk_name },
                     { key: "last_sync", value: new Date().toISOString() }
                 ]);
 
                 // Update State
-                setOrgName(organization_name);
-                setSiteName(site_name);
+                setOrgName(organization_name || "Organization");
+                setSiteName(site_name || "Site");
+                if (organization_logo) setOrgLogo(organization_logo);
 
                 // 3. Fetch Employees for this Org
                 const empResult = await fetchOrganizationEmployees(organization_id);

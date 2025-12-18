@@ -114,7 +114,7 @@ export async function fetchKioskConfig(kioskId: string) {
             name,
             organization_id,
             site_id,
-            organizations ( name, settings ),
+            organizations ( name, settings, logo_url ),
             sites ( name )
         `)
         .eq('id', kioskId)
@@ -133,9 +133,10 @@ export async function fetchKioskConfig(kioskId: string) {
         success: true,
         config: {
             kiosk_name: data.name,
-            organization_name: (data.organizations as unknown as { name: string })?.name,
-            organization_settings: (data.organizations as unknown as { settings: any })?.settings,
-            site_name: (data.sites as unknown as { name: string })?.name,
+            organization_name: (data.organizations as any)?.name,
+            organization_settings: (data.organizations as any)?.settings,
+            organization_logo: (data.organizations as any)?.logo_url,
+            site_name: (data.sites as any)?.name,
             organization_id: data.organization_id,
             site_id: data.site_id
         }
