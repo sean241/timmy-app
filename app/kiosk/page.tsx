@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { Employee } from "@/types";
 import Webcam from "react-webcam";
-import { LogOut, LogIn, UserCheck, RefreshCw, List, LayoutDashboard, CheckCircle, Users, X, Search, Wifi, WifiOff, Building2 } from "lucide-react";
+import { LogOut, LogIn, UserCheck, RefreshCw, List, LayoutDashboard, CheckCircle, Users, X, Search, Wifi, WifiOff, Building2, Monitor, ArrowLeftRight, Plus } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import clsx from "clsx";
 import { fetchOrganizationEmployees, fetchKioskConfig, pushKioskLogs } from "@/app/actions/sync";
 
 export default function KioskPage() {
+    const router = useRouter();
     const [step, setStep] = useState<"PIN" | "ACTION">("PIN");
     const [pin, setPin] = useState("");
     const [error, setError] = useState(false);
@@ -25,8 +27,14 @@ export default function KioskPage() {
     // Config state
     const [orgName, setOrgName] = useState("Organization");
     const [siteName, setSiteName] = useState("Site");
+    const [kioskName, setKioskName] = useState("");
     const [orgLogo, setOrgLogo] = useState<string | null>(null);
     const [isOnline, setIsOnline] = useState(true);
+    const [pairedTerminals, setPairedTerminals] = useState<any[]>([]);
+    const [showTerminalSwitcher, setShowTerminalSwitcher] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [employeeStatuses, setEmployeeStatuses] = useState<Record<string, { isPresent: boolean; time: string | null }>>({});
+    const [isValidating, setIsValidating] = useState(true);
 
     const webcamRef = useRef<Webcam>(null);
 
@@ -119,13 +127,63 @@ export default function KioskPage() {
             const storedOrgName = await db.local_config.get("org_name");
             const storedSiteName = await db.local_config.get("site_name");
             const storedOrgLogo = await db.local_config.get("org_logo");
+            const storedKioskName = await db.local_config.get("kiosk_name");
 
             if (storedOrgName?.value && typeof storedOrgName.value === 'string') setOrgName(storedOrgName.value);
             if (storedSiteName?.value && typeof storedSiteName.value === 'string') setSiteName(storedSiteName.value);
             if (storedOrgLogo?.value && typeof storedOrgLogo.value === 'string') setOrgLogo(storedOrgLogo.value);
+            if (storedKioskName?.value && typeof storedKioskName.value === 'string') setKioskName(storedKioskName.value);
+
+            // SELF-HEALING: If we have an active kiosk but it's not in the terminals table, add it.
+            const currentKioskId = (await db.local_config.get("kiosk_id"))?.value as string;
+            if (currentKioskId) {
+                const existing = await db.terminals.get(currentKioskId);
+                if (!existing && storedOrgName?.value && storedSiteName?.value) {
+                    await db.terminals.put({
+                        id: currentKioskId,
+                        name: "Terminal",
+                        site_id: (await db.local_config.get("site_id"))?.value as string || "",
+                        site_name: storedSiteName.value as string,
+                        organization_id: (await db.local_config.get("organization_id"))?.value as string || "",
+                        organization_name: storedOrgName.value as string,
+                        logo_url: storedOrgLogo?.value as string || ""
+                    });
+                }
+            }
+
+            // Fetch all paired terminals
+            const terminals = await db.terminals.toArray();
+            setPairedTerminals(terminals);
         };
         loadConfig();
     }, []);
+
+    const handleSwitchTerminal = async (terminalId: string) => {
+        setSyncing(true);
+        try {
+            const term = await db.terminals.get(terminalId);
+            if (term) {
+                // Update active kiosk in local_config
+                await db.local_config.put({ key: "kiosk_id", value: terminalId });
+
+                // Update state immediately for visual feedback
+                setOrgName(term.organization_name);
+                setSiteName(term.site_name);
+                setKioskName(term.name);
+                setOrgLogo(term.logo_url || null);
+
+                // Close switcher
+                setShowTerminalSwitcher(false);
+
+                // Trigger a full sync for the new terminal
+                await handleSync(false);
+            }
+        } catch (err) {
+            console.error("Error switching terminal:", err);
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     const handleValidate = () => {
         if (pin.length === 4) {
@@ -237,6 +295,22 @@ export default function KioskPage() {
 
     // Background Sync Interval
     useEffect(() => {
+        const checkPairing = async () => {
+            const kioskId = (await db.local_config.get("kiosk_id"))?.value;
+            const terms = await db.terminals.toArray();
+
+            if (!kioskId && terms.length === 0) {
+                console.log("No terminal paired, redirecting to setup...");
+                router.replace("/site-setup");
+                return;
+            }
+
+            setIsValidating(false);
+            handleSync(true); // Initial sync on mount
+        };
+
+        checkPairing();
+
         const interval = setInterval(() => {
             if (navigator.onLine) {
                 console.log("Running background sync...");
@@ -253,10 +327,17 @@ export default function KioskPage() {
             // 1. Get Kiosk ID
             let kioskId = (await db.local_config.get("kiosk_id"))?.value as string;
 
-            // FALLBACK FOR USER REQUEST
+            // FALLBACK: If not specifically set, use the first terminal in Dexie
             if (!kioskId) {
-                kioskId = "f0f35cc5-3e3a-4956-9e8d-22ed2c83b65a";
-                await db.local_config.put({ key: "kiosk_id", value: kioskId });
+                const terms = await db.terminals.toArray();
+                if (terms.length > 0) {
+                    kioskId = terms[0].id;
+                    await db.local_config.put({ key: "kiosk_id", value: kioskId });
+                } else {
+                    // No terminal found at all, stop sync and wait for setup
+                    if (!silent) console.log("No terminal paired. Stopping sync.");
+                    return;
+                }
             }
 
             if (!silent) console.log("Syncing for Kiosk ID:", kioskId);
@@ -278,10 +359,26 @@ export default function KioskPage() {
                     { key: "last_sync", value: new Date().toISOString() }
                 ]);
 
+                // Ensure this kiosk is in the terminals table
+                await db.terminals.put({
+                    id: kioskId,
+                    name: kiosk_name,
+                    site_id: site_id,
+                    site_name: site_name,
+                    organization_id: organization_id,
+                    organization_name: organization_name,
+                    logo_url: organization_logo
+                });
+
                 // Update State
                 setOrgName(organization_name || "Organization");
                 setSiteName(site_name || "Site");
+                setKioskName(kiosk_name || "Terminal");
                 if (organization_logo) setOrgLogo(organization_logo);
+
+                // Refresh pairings list
+                const terms = await db.terminals.toArray();
+                setPairedTerminals(terms);
 
                 // 3. Fetch Employees for this Org
                 const empResult = await fetchOrganizationEmployees(organization_id);
@@ -339,8 +436,6 @@ export default function KioskPage() {
         }
     };
 
-    const [searchTerm, setSearchTerm] = useState("");
-    const [employeeStatuses, setEmployeeStatuses] = useState<Record<string, { isPresent: boolean; time: string | null }>>({});
 
     const handleOpenEmployeeList = async () => {
         const employees = await db.local_employees
@@ -380,19 +475,33 @@ export default function KioskPage() {
 
     const presentCount = Object.values(employeeStatuses).filter(s => s.isPresent).length;
 
+    if (isValidating) {
+        return (
+            <div className="min-h-screen bg-[#0B3B46] flex flex-col items-center justify-center gap-6">
+                <div className="w-16 h-16 rounded-full border-4 border-white/10 border-t-[#4FD1C5] animate-spin" />
+                <div className="flex flex-col items-center gap-2">
+                    <p className="text-[#4FD1C5] font-bold tracking-[0.3em] text-sm animate-pulse">TIMMY TERMINAL</p>
+                    <p className="text-white/20 text-[10px] font-mono uppercase">Initialisation du système...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <main className="min-h-screen bg-[#0B3B46] relative font-sans overflow-hidden">
+        <main className="h-screen bg-[#0B3B46] relative font-sans overflow-hidden select-none">
 
             {/* ACTION VIEW Container */}
             <div className={clsx(
                 "absolute inset-0 z-0 bg-[#0B3B46] transition-opacity duration-500",
                 step === "ACTION" ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             )}>
-                <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white">
-                    <div className="w-full max-w-md flex flex-col items-center">
-                        <h2 className="text-3xl font-bold mb-8 text-center">{currentT.hello}, <span className="text-[#4FD1C5]">{employee?.first_name}</span></h2>
+                <div className="h-full flex flex-col items-center justify-center p-4 text-white">
+                    <div className="w-full max-w-sm flex flex-col items-center">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">{currentT.hello}, <span className="text-[#4FD1C5]">{employee?.first_name}</span></h2>
 
-                        <div className="relative w-full aspect-[3/4] bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-[#1E5562] mb-8">
+
+
+                        <div className="relative w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-[#1E5562] mb-4 sm:mb-6">
                             <Webcam
                                 audio={false}
                                 ref={webcamRef}
@@ -403,28 +512,28 @@ export default function KioskPage() {
                         </div>
 
                         {!msg && (
-                            <div className="grid grid-cols-2 gap-4 w-full">
+                            <div className="grid grid-cols-2 gap-3 w-full">
                                 <button
                                     onClick={() => handleClock("IN")}
-                                    className="h-24 rounded-2xl bg-[#10B981] hover:bg-[#059669] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 shadow-lg shadow-[#10B981]/20"
+                                    className="h-16 sm:h-20 rounded-2xl bg-[#10B981] hover:bg-[#059669] active:scale-95 transition-all flex flex-col items-center justify-center gap-1 shadow-lg shadow-[#10B981]/20"
                                 >
-                                    <LogIn size={32} />
-                                    <span className="font-bold text-lg">{currentT.arrival}</span>
+                                    <LogIn className="w-5 h-5 sm:w-6 sm:h-6" />
+                                    <span className="font-bold text-sm sm:text-base">{currentT.arrival}</span>
                                 </button>
 
                                 <button
                                     onClick={() => handleClock("OUT")}
-                                    className="h-24 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] active:scale-95 transition-all flex flex-col items-center justify-center gap-2 shadow-lg shadow-[#EF4444]/20"
+                                    className="h-16 sm:h-20 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] active:scale-95 transition-all flex flex-col items-center justify-center gap-1 shadow-lg shadow-[#EF4444]/20"
                                 >
-                                    <LogOut size={32} />
-                                    <span className="font-bold text-lg">{currentT.departure}</span>
+                                    <LogOut className="w-5 h-5 sm:w-6 sm:h-6" />
+                                    <span className="font-bold text-sm sm:text-base">{currentT.departure}</span>
                                 </button>
                             </div>
                         )}
 
                         <button
                             onClick={() => { setEmployee(null); setStep("PIN"); }}
-                            className="mt-8 text-white/50 hover:text-white text-sm"
+                            className="mt-6 text-white/50 hover:text-white text-xs"
                         >
                             {currentT.cancel}
                         </button>
@@ -442,8 +551,8 @@ export default function KioskPage() {
 
             {/* PIN PAD SECTION */}
             <div className={clsx(
-                "absolute inset-0 z-10 bg-[#0B3B46] flex flex-col items-center justify-center p-6 text-white transition-opacity duration-300",
-                step === "PIN" ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                "h-full flex flex-col items-center justify-center p-4 sm:p-6 text-white transition-opacity duration-300",
+                step === "PIN" ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none absolute inset-0 z-0"
             )}>
 
                 {/* Network Status Indicator */}
@@ -459,8 +568,38 @@ export default function KioskPage() {
                     </div>
                 </div>
 
+                {/* Kiosk Name Badge - Bottom Left */}
+                <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-1">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10">
+                        <Monitor size={14} className="text-[#4FD1C5]" />
+                        <span className="text-[10px] font-bold text-white tracking-widest uppercase truncate max-w-[150px]">
+                            {kioskName || "TERMINAL"}
+                        </span>
+                    </div>
+                </div>
+
                 {/* Admin Controls */}
                 <div className="absolute top-6 right-6 flex gap-3 z-20">
+                    {/* Terminal Switcher */}
+                    {pairedTerminals.length > 1 && (
+                        <button
+                            onClick={() => setShowTerminalSwitcher(true)}
+                            className="flex items-center gap-2 px-3 py-1 bg-white/10 text-white hover:bg-white/20 rounded-lg transition-all text-xs font-bold"
+                            title="Changer de terminal"
+                        >
+                            <ArrowLeftRight size={14} />
+                            <span className="hidden sm:inline">Changer</span>
+                        </button>
+                    )}
+
+                    <button
+                        onClick={() => router.push('/site-setup')}
+                        className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-all"
+                        title="Ajouter un terminal"
+                    >
+                        <Plus size={18} />
+                    </button>
+
                     {/* Language Switcher */}
                     <button
                         onClick={() => setLocale(locale === 'fr' ? 'en' : 'fr')}
@@ -577,9 +716,83 @@ export default function KioskPage() {
                     </div>
                 )}
 
-                <div className="flex flex-col items-center w-full max-w-md">
+                {/* Terminal Switcher Modal */}
+                {showTerminalSwitcher && (
+                    <div className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
+                        <div className="bg-[#1E5562] border border-white/10 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col">
+                            <div className="p-8 border-b border-white/10 flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white">Changer de Terminal</h2>
+                                    <p className="text-[#4FD1C5] text-sm opacity-80 mt-1">Sélectionnez le site pour ce terminal</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowTerminalSwitcher(false)}
+                                    className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all"
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="p-4 flex-1 overflow-y-auto max-h-[60vh] space-y-3">
+                                {pairedTerminals.map((term) => {
+                                    const isActive = orgName === term.organization_name && siteName === term.site_name;
+                                    return (
+                                        <button
+                                            key={term.id}
+                                            onClick={() => handleSwitchTerminal(term.id)}
+                                            className={clsx(
+                                                "w-full flex items-center gap-4 p-5 rounded-3xl transition-all border-2",
+                                                isActive
+                                                    ? "bg-[#4FD1C5] border-[#4FD1C5] text-[#0B3B46] shadow-lg scale-[1.02]"
+                                                    : "bg-white/5 border-white/5 text-white hover:bg-white/10 hover:border-white/10"
+                                            )}
+                                        >
+                                            <div className={clsx(
+                                                "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0",
+                                                isActive ? "bg-white/20" : "bg-white/10 text-[#4FD1C5]"
+                                            )}>
+                                                {term.logo_url ? (
+                                                    <img src={term.logo_url} className="w-full h-full object-cover rounded-2xl" alt="" />
+                                                ) : (
+                                                    <Building2 size={24} />
+                                                )}
+                                            </div>
+                                            <div className="text-left flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <h4 className="font-bold text-lg truncate">{term.site_name}</h4>
+                                                    <span className={clsx(
+                                                        "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                                                        isActive ? "bg-[#0B3B46]/20 border-[#0B3B46]/30 text-[#0B3B46]" : "bg-white/10 border-white/10 text-[#4FD1C5]"
+                                                    )}>
+                                                        {term.name}
+                                                    </span>
+                                                </div>
+                                                <p className={clsx("text-sm font-medium opacity-80 truncate", isActive ? "" : "text-[#4FD1C5]")}>
+                                                    {term.organization_name}
+                                                </p>
+                                            </div>
+                                            {isActive && <CheckCircle size={24} />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="p-6 bg-black/20 flex justify-center">
+                                <button
+                                    onClick={() => router.push('/site-setup')}
+                                    className="flex items-center gap-2 text-[#4FD1C5] font-bold py-2 px-4 rounded-xl hover:bg-white/5 transition-colors"
+                                >
+                                    <Plus size={20} />
+                                    <span>Pairer une nouvelle borne</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex flex-col items-center w-full max-w-sm py-2">
                     {/* Logo */}
-                    <div className="w-24 h-24 rounded-full border-2 border-[#1E5562] flex items-center justify-center mb-6 bg-white/50 overflow-hidden relative">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-[#1E5562] flex items-center justify-center mb-3 bg-white/50 overflow-hidden relative">
                         {orgLogo ? (
                             <Image src={orgLogo} alt="Logo" fill className="object-cover" />
                         ) : (
@@ -588,77 +801,74 @@ export default function KioskPage() {
                     </div>
 
                     {/* Site & Org Name */}
-                    <div className="text-center mb-10">
-                        <h2 className="text-2xl font-bold text-white mb-1">{siteName}</h2>
-                        <p className="text-[#4FD1C5] text-sm font-bold uppercase tracking-wider">{orgName}</p>
+                    <div className="text-center mb-4 leading-tight">
+                        <h2 className="text-lg sm:text-xl font-bold text-white leading-none mb-0.5">{siteName}</h2>
+                        <p className="text-[#4FD1C5] text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em]">{orgName}</p>
                     </div>
 
                     {/* Clock */}
-                    <div className="text-center mb-10">
-                        <h1 className="text-7xl font-bold tracking-wider mb-2 font-mono">{time}</h1>
-                        <p className="text-[#4FD1C5] text-sm font-medium tracking-widest">{date}</p>
+                    <div className="text-center mb-4">
+                        <h1 className="text-4xl sm:text-6xl font-black tracking-tighter mb-0.5 font-mono">{time}</h1>
+                        <p className="text-[#4FD1C5] text-[10px] sm:text-xs font-bold tracking-[0.3em] uppercase">{date}</p>
                     </div>
 
                     {/* PIN Indicators */}
-                    <div className="flex flex-col items-center gap-4 mb-8">
-                        <div className="flex gap-4">
+                    <div className="flex flex-col items-center gap-2 mb-4">
+                        <div className="flex gap-3">
                             {[...Array(4)].map((_, i) => (
                                 <div
                                     key={i}
                                     className={clsx(
-                                        "w-5 h-5 rounded-full border-2 transition-all duration-300",
+                                        "w-4 h-4 rounded-full border-2 transition-all duration-300",
                                         i < pin.length ? "bg-[#FBBF24] border-[#FBBF24]" : "border-[#4FD1C5] bg-transparent",
                                         error && "border-red-500 bg-red-500/20 animate-pulse"
                                     )}
                                 />
                             ))}
                         </div>
-                        <div className="h-6">
+                        <div className="h-4">
                             {error && (
-                                <p className="text-red-400 font-bold text-sm animate-pulse">{currentT.pinError}</p>
+                                <p className="text-red-400 font-bold text-[10px] uppercase tracking-wider animate-pulse">{currentT.pinError}</p>
                             )}
                         </div>
                     </div>
 
                     {/* Keypad */}
-                    <div className="grid grid-cols-3 gap-4 w-full">
+                    <div className="grid grid-cols-3 gap-2.5 w-full max-w-[320px]">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                             <button
                                 key={num}
                                 onClick={() => handleDigitPress(num.toString())}
-                                className="h-20 bg-[#0E4C5B] rounded-xl text-3xl font-bold text-white hover:bg-[#165f70] active:scale-95 transition-all shadow-sm"
+                                className="h-14 sm:h-16 bg-[#0E4C5B] rounded-2xl text-2xl font-bold text-white hover:bg-[#165f70] active:scale-95 transition-all shadow-lg border border-white/5"
                             >
                                 {num}
                             </button>
                         ))}
 
-                        {/* Clear Button */}
                         <button
                             onClick={handleClear}
-                            className="h-20 bg-[#2D3344] rounded-xl text-xl font-bold text-[#F87171] hover:bg-[#374151] active:scale-95 transition-all shadow-sm"
+                            className="h-14 sm:h-16 bg-white/5 rounded-2xl text-xs font-bold text-red-400 hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center uppercase tracking-[0.1em]"
                         >
-                            C
+                            EFFACER
                         </button>
 
-                        {/* Zero */}
                         <button
                             onClick={() => handleDigitPress("0")}
-                            className="h-20 bg-[#0E4C5B] rounded-xl text-3xl font-bold text-white hover:bg-[#165f70] active:scale-95 transition-all shadow-sm"
+                            className="h-14 sm:h-16 bg-[#0E4C5B] rounded-2xl text-2xl font-bold text-white hover:bg-[#165f70] active:scale-95 transition-all shadow-lg border border-white/5"
                         >
                             0
                         </button>
 
-                        {/* Action/User Button (Validate) */}
                         <button
                             onClick={handleValidate}
-                            className="h-20 bg-[#FBBF24] rounded-xl flex items-center justify-center text-[#0B3B46] hover:bg-[#F59E0B] active:scale-95 transition-all shadow-sm"
+                            className="h-14 sm:h-16 bg-[#FBBF24] rounded-2xl flex items-center justify-center text-[#0B3B46] hover:bg-[#F59E0B] active:scale-95 transition-all shadow-lg shadow-[#FBBF24]/10"
                         >
-                            <UserCheck size={32} strokeWidth={2.5} />
+                            <UserCheck size={28} strokeWidth={2.5} />
                         </button>
                     </div>
 
                     {/* Footer */}
-                    <div className="mt-12 text-[#4FD1C5]/40 text-[10px] font-mono tracking-[0.2em] uppercase">
+                    <div className="mt-8 text-[#4FD1C5]/30 text-[9px] font-mono tracking-[0.2em] uppercase">
                         {currentT.systemReady}
                     </div>
                 </div>

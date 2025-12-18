@@ -47,7 +47,26 @@ class TimmyDatabase extends Dexie {
         this.version(8).stores({
             local_employees: 'id, pin_code' // Changed pin to pin_code
         });
+
+        // Version 9: Add terminals table for multiple pairings
+        this.version(9).stores({
+            terminals: 'id, site_id, organization_id'
+        });
     }
 }
 
-export const db = new TimmyDatabase();
+export interface Terminal {
+    id: string; // Kiosk ID (UUID)
+    name: string;
+    site_id: string;
+    site_name: string;
+    organization_id: string;
+    organization_name: string;
+    logo_url?: string;
+    settings?: any;
+    last_sync?: string;
+}
+
+export const db = new TimmyDatabase() as TimmyDatabase & {
+    terminals: Table<Terminal, string>;
+};

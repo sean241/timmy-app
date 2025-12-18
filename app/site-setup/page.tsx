@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/db";
 import Image from "next/image";
 import { verifyKioskCode } from "@/app/actions/kiosk";
 import clsx from "clsx";
@@ -14,6 +15,7 @@ export default function SiteSetupPage() {
     const [loading, setLoading] = useState(false);
     const [lang, setLang] = useState<"fr" | "en">("fr");
     const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+    const [showResetModal, setShowResetModal] = useState(false);
 
     // Clock for left side
     const [time, setTime] = useState("");
@@ -66,14 +68,58 @@ export default function SiteSetupPage() {
             }
 
             if (result.success && result.config) {
-                localStorage.setItem("kiosk_device_id", result.config.device_id);
-                localStorage.setItem("kiosk_config", JSON.stringify(result.config));
+                // Store in Dexie Terminals table
+                const { config } = result;
+                await db.terminals.put({
+                    id: config.kiosk_id,
+                    name: config.kiosk_name,
+                    site_id: config.site_id,
+                    site_name: config.site_name,
+                    organization_id: config.organization_id,
+                    organization_name: config.organization_name,
+                    logo_url: config.organization_logo
+                });
+
+                // Set as active terminal
+                await db.local_config.bulkPut([
+                    { key: "kiosk_id", value: config.kiosk_id },
+                    { key: "device_id", value: config.device_id },
+                    { key: "organization_id", value: config.organization_id },
+                    { key: "site_id", value: config.site_id },
+                    { key: "org_name", value: config.organization_name },
+                    { key: "site_name", value: config.site_name },
+                    { key: "org_logo", value: config.organization_logo || "" }
+                ]);
+
                 router.push("/kiosk");
             }
         } catch (err) {
             console.error("Pairing error:", err);
             setError(true);
             setLoading(false);
+        }
+    };
+
+    const handleReset = async () => {
+        try {
+            // Delete the entire database for a 100% clean state
+            await db.delete();
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = "/site-setup";
+        } catch (err) {
+            console.error("Reset error:", err);
+            // Fallback: clear tables one by one if delete fails
+            await Promise.all([
+                db.local_config.clear(),
+                db.terminals.clear(),
+                db.local_employees.clear(),
+                db.local_logs.clear(),
+                db.cloud_employees.clear(),
+                db.cloud_sites.clear(),
+                db.cloud_kiosks.clear()
+            ]);
+            window.location.reload();
         }
     };
 
@@ -263,14 +309,60 @@ export default function SiteSetupPage() {
                 </div>
 
                 {/* Bottom Right Manager Access */}
-                <div className="absolute bottom-8 right-8">
+                <div className="fixed bottom-4 right-4 flex gap-4 z-[100] bg-white/80 backdrop-blur-sm p-2 rounded-2xl border border-gray-200 shadow-xl">
                     <button
-                        onClick={() => router.push('/admin')}
-                        className="bg-[#E2E8F0] text-[#64748B] px-4 py-2 rounded-full text-xs font-bold hover:bg-[#CBD5E1] transition-colors"
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowResetModal(true);
+                        }}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-bold border border-red-100 hover:bg-red-100 transition-all"
+                    >
+                        DANGER: RESET
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            router.push('/admin');
+                        }}
+                        className="bg-[#E2E8F0] text-[#64748B] px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#CBD5E1] transition-colors"
                     >
                         {t[lang].manager}
                     </button>
                 </div>
+
+                {/* Custom Reset Modal */}
+                {showResetModal && (
+                    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-red-100">
+                            <div className="p-8 text-center">
+                                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <Delete size={32} />
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-2">Réinitialisation</h3>
+                                <p className="text-gray-500 leading-relaxed">
+                                    Voulez-vous vraiment TOUT réinitialiser ? Cette action supprimera tous les terminaux et employés de cet appareil.
+                                </p>
+                            </div>
+                            <div className="p-6 bg-gray-50 flex gap-3">
+                                <button
+                                    onClick={() => setShowResetModal(false)}
+                                    className="flex-1 py-4 px-6 bg-white border border-gray-200 rounded-2xl font-bold text-gray-600 hover:bg-gray-100 transition-all"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleReset}
+                                    className="flex-1 py-4 px-6 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 shadow-lg shadow-red-200 transition-all"
+                                >
+                                    Confirmer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </main>
     );

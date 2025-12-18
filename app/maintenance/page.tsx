@@ -91,8 +91,10 @@ function AdminContent() {
     };
 
     const handleDisconnect = async () => {
-        if (window.confirm("Êtes-vous sûr de vouloir déconnecter ce terminal du site ?")) {
+        if (window.confirm("Êtes-vous sûr de vouloir réinitialiser COMPLÈTEMENT ce terminal ? Tous les sites appairés et les données locales seront supprimés.")) {
             await db.local_config.clear();
+            await db.terminals.clear();
+            await db.local_employees.clear();
             window.location.href = "/site-setup";
         }
     };
