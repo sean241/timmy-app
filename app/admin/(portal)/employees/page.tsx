@@ -31,30 +31,7 @@ export default function EmployeesPage() {
     const [companyName, setCompanyName] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: profile } = await supabase.from('profiles').select('organization_id, first_name, last_name').eq('id', user.id).single();
-                if (profile) {
-                    setOrganizationId(profile.organization_id);
-                    setManagerName(profile.first_name || "Manager");
 
-                    if (profile.organization_id) {
-                        const { data: org } = await supabase.from('organizations').select('name').eq('id', profile.organization_id).single();
-                        if (org) setCompanyName(org.name);
-
-                        // Fetch employees and sites only if we have an organization
-                        await fetchEmployees(profile.organization_id);
-                        const { data: siteData, error: siteError } = await supabase.from('sites').select('*').eq('organization_id', profile.organization_id);
-                        if (!siteError) setSites(siteData || []);
-                    }
-                }
-            }
-            setIsLoading(false);
-        };
-        fetchData();
-    }, [fetchEmployees]);
 
 
     // State
@@ -118,6 +95,31 @@ export default function EmployeesPage() {
             console.error("Error fetching employees:", error);
         }
     }, [supabase]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase.from('profiles').select('organization_id, first_name, last_name').eq('id', user.id).single();
+                if (profile) {
+                    setOrganizationId(profile.organization_id);
+                    setManagerName(profile.first_name || "Manager");
+
+                    if (profile.organization_id) {
+                        const { data: org } = await supabase.from('organizations').select('name').eq('id', profile.organization_id).single();
+                        if (org) setCompanyName(org.name);
+
+                        // Fetch employees and sites only if we have an organization
+                        await fetchEmployees(profile.organization_id);
+                        const { data: siteData, error: siteError } = await supabase.from('sites').select('*').eq('organization_id', profile.organization_id);
+                        if (!siteError) setSites(siteData || []);
+                    }
+                }
+            }
+            setIsLoading(false);
+        };
+        fetchData();
+    }, [fetchEmployees]);
     // Derived Data
     const counts = useMemo(() => {
         if (!employees) return { active: 0, archived: 0 };
