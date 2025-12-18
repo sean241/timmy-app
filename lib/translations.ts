@@ -23,6 +23,20 @@ export const translations = {
             terms: "J'accepte les Conditions d'utilisation et la Politique de confidentialité.",
             copyright: "Timmy Solutions.",
         },
+        errors: {
+            page404: {
+                title: "Oups ! Chantier introuvable.",
+                desc: "Il semble que cette page ait quitté le site sans pointer sa sortie. Ne vous inquiétez pas, on va vous ramener à bon port.",
+                backHome: "Retour au tableau de bord",
+                support: "Signaler un problème"
+            },
+            page500: {
+                title: "Court-circuit interne.",
+                desc: "Nos ingénieurs sont déjà sur le coup pour rétablir le courant. Veuillez nous excuser pour ce contretemps technique.",
+                retry: "Dégager le passage (Réessayer)",
+                backHome: "Retour au bercail"
+            }
+        },
         sidebar: {
             nav: {
                 dashboard: "Tableau de Bord",
@@ -1075,6 +1089,20 @@ export const translations = {
             phone: "Phone",
             terms: "I accept the Terms of Service and Privacy Policy.",
             copyright: "Timmy Solutions.",
+        },
+        errors: {
+            page404: {
+                title: "Oops! Site not found.",
+                desc: "It seems this page left the site without punching out. Don't worry, we'll get you back on track.",
+                backHome: "Back to Dashboard",
+                support: "Report a problem"
+            },
+            page500: {
+                title: "Internal Short-Circuit.",
+                desc: "Our engineers are already on it to restore power. Please excuse this technical delay.",
+                retry: "Clear the path (Retry)",
+                backHome: "Back to Base"
+            }
         },
         sidebar: {
             nav: {
