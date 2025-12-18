@@ -308,6 +308,7 @@ export const translations = {
         },
         dashboard: {
             totalEmployees: "Total Employés",
+            siteActivity: "Activité des Sites",
             title: "Suivi des Heures",
             subtitle: "Consultez, corrigez et validez les pointages de vos équipes.",
             filters: {
@@ -1015,6 +1016,7 @@ export const translations = {
         },
         dashboard: {
             totalEmployees: "Total Employees",
+            siteActivity: "Site Activity",
             title: "Time Entries",
             subtitle: "Track, edit, and validate your team's attendance.",
             filters: {

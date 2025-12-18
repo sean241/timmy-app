@@ -8,6 +8,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Toast from "@/components/Toast";
+import { useLanguage } from '@/app/context/LanguageContext';
 
 // --- Types ---
 type LogType = 'CHECK_IN' | 'CHECK_OUT' | 'BREAK_START' | 'BREAK_END';
@@ -37,6 +38,7 @@ interface LiveFeedItem {
 }
 
 export default function DashboardPage() {
+    const { t } = useLanguage();
     const [mounted, setMounted] = useState(false);
     const router = useRouter();
 
@@ -510,7 +512,7 @@ export default function DashboardPage() {
                     <div>
                         <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                             <MapPin size={18} className="text-slate-500" />
-                            État des Chantiers
+                            {t.dashboard?.siteActivity || "Activité des Sites"}
                         </h2>
                         {/* Auto-responsive grid: 1 col for 1 item, 3 cols for many */}
                         <div className={`grid gap-4 ${stats.siteStats.length === 1 ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
@@ -532,13 +534,13 @@ export default function DashboardPage() {
                                         <div className="flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
                                             <div className="flex items-center gap-1 text-emerald-600 font-bold">
-                                                {site.present} Présents
+                                                {site.present} {site.present > 1 ? "Présents" : "Présent"}
                                             </div>
                                         </div>
                                         {site.late > 0 && (
                                             <div className="flex items-center gap-1 text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded-md">
                                                 <Clock size={10} />
-                                                {site.late} Retards
+                                                {site.late} {site.late > 1 ? "Retards" : "Retard"}
                                             </div>
                                         )}
                                     </div>
