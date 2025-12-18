@@ -47,13 +47,8 @@ export default function EmployeesPage() {
                 }
             }
 
-            const { data: empData, error: empError } = await supabase.from('employees').select('*');
-            if (!empError) {
-                // Filter out the "Postes À Pourvoir" placeholder used in Planning
-                const realEmployees = (empData || []).filter(e =>
-                    !`${e.first_name} ${e.last_name}`.toLowerCase().includes('pourvoir')
-                );
-                setEmployees(realEmployees);
+            if (profile?.organization_id) {
+                await fetchEmployees(profile.organization_id);
             }
             const { data: siteData, error: siteError } = await supabase.from('sites').select('*');
             if (!siteError) setSites(siteData || []);
@@ -107,7 +102,23 @@ export default function EmployeesPage() {
     const webcamRef = useRef<Webcam>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const importInputRef = useRef<HTMLInputElement>(null);
+    const fetchEmployees = useCallback(async (orgId: string) => {
+        const { data, error } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('organization_id', orgId)
+            .order('last_name');
 
+        if (!error && data) {
+            // Filter out the "Postes À Pourvoir" placeholder used in Planning
+            const realEmployees = data.filter(e =>
+                !`${e.first_name} ${e.last_name}`.toLowerCase().includes('pourvoir')
+            );
+            setEmployees(realEmployees);
+        } else if (error) {
+            console.error("Error fetching employees:", error);
+        }
+    }, [supabase]);
     // Derived Data
     const counts = useMemo(() => {
         if (!employees) return { active: 0, archived: 0 };
@@ -154,8 +165,7 @@ export default function EmployeesPage() {
             } else {
                 setToast({ message: t.employees.toast.updateSuccess, type: "success" });
                 // Refresh list
-                const { data } = await supabase.from('employees').select('*');
-                setEmployees(data || []);
+                await fetchEmployees(organizationId);
             }
         } else {
             const { error } = await supabase.from('employees').insert(employeeData);
@@ -163,8 +173,7 @@ export default function EmployeesPage() {
                 setToast({ message: `${t.employees.toast.createError}: ${error.message}`, type: "error" });
             } else {
                 setToast({ message: t.employees.toast.createSuccess, type: "success" });
-                const { data } = await supabase.from('employees').select('*');
-                setEmployees(data || []);
+                await fetchEmployees(organizationId);
             }
         }
         closeDrawer();
@@ -177,8 +186,7 @@ export default function EmployeesPage() {
                 setToast({ message: `${t.employees.toast.archiveError}: ${error.message}`, type: "error" });
             } else {
                 // Refresh list
-                const { data } = await supabase.from('employees').select('*');
-                setEmployees(data || []);
+                await fetchEmployees(organizationId!);
             }
         }
     };
@@ -196,8 +204,7 @@ export default function EmployeesPage() {
         } else {
             setToast({ message: !currentStatus ? t.employees.toast.verified : t.employees.toast.unverified, type: "success" });
             // Refresh list
-            const { data } = await supabase.from('employees').select('*');
-            setEmployees(data || []);
+            await fetchEmployees(organizationId!);
         }
     };
 
@@ -420,9 +427,7 @@ export default function EmployeesPage() {
                 }
             }
             // Refresh list after import
-            const { data } = await supabase.from('employees').select('*');
-            setEmployees(data || []);
-            setEmployees(data || []);
+            await fetchEmployees(organizationId);
             setImportStep(4);
         } catch (error) {
             console.error("Import failed", error);

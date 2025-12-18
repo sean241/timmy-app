@@ -166,7 +166,12 @@ export default function AttendanceLogsPage() {
             .gte('start_time', startOfHistory)
             .lt('start_time', endOfFuture);
 
-        if (empData) setEmployees(empData);
+        if (empData) {
+            const realEmployees = empData.filter(e =>
+                !`${e.first_name} ${e.last_name}`.toLowerCase().includes('pourvoir')
+            );
+            setEmployees(realEmployees);
+        }
         if (siteData) setSites(siteData);
         if (shiftData) setShifts(shiftData);
     };

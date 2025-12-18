@@ -27,6 +27,7 @@ export async function fetchOrganizationEmployees(organizationId: string) {
         .select('id, first_name, last_name, pin_code, avatar_url, job_title')
         .eq('organization_id', organizationId)
         .eq('is_active', true)
+        .not('last_name', 'ilike', '%pourvoir%') // Filter out planning placeholders
 
     if (error) {
         console.error('Error fetching employees:', error)
