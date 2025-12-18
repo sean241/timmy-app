@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import QRCode from "react-qr-code";
 import Toast from "@/components/Toast";
 import { useLanguage } from "@/app/context/LanguageContext";
+import { uploadFile, BUCKETS } from "@/lib/storage";
 
 // TypeScript interfaces for data models
 import { Employee } from "@/types";
@@ -102,6 +103,7 @@ export default function EmployeesPage() {
     });
     const [isWebcamOpen, setIsWebcamOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
     const webcamRef = useRef<Webcam>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const importInputRef = useRef<HTMLInputElement>(null);
@@ -212,22 +214,60 @@ export default function EmployeesPage() {
         }
     };
 
-    const capturePhoto = useCallback(() => {
+    const capturePhoto = useCallback(async () => {
         const imageSrc = webcamRef.current?.getScreenshot();
-        if (imageSrc) {
-            setFormData(prev => ({ ...prev, photo_url: imageSrc }));
-            setIsWebcamOpen(false);
-        }
-    }, [webcamRef]);
+        if (imageSrc && organizationId) {
+            setIsUploadingPhoto(true);
+            try {
+                // Convert base64 to blob
+                const res = await fetch(imageSrc);
+                const blob = await res.blob();
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+                const fileExt = 'jpg';
+                const fileName = `avatar-${Date.now()}.${fileExt}`;
+                const filePath = `avatars/${organizationId}/${fileName}`;
+
+                const { url, error } = await uploadFile(BUCKETS.PUBLIC_ASSETS, filePath, blob);
+                if (error) throw error;
+
+                setFormData(prev => ({ ...prev, photo_url: url || "" }));
+                setIsWebcamOpen(false);
+                setToast({ message: "Photo capturée et enregistrée", type: "success" });
+            } catch (err) {
+                console.error("Error uploading captured photo:", err);
+                setToast({ message: "Erreur lors de l'enregistrement de la photo", type: "error" });
+            } finally {
+                setIsUploadingPhoto(false);
+            }
+        }
+    }, [webcamRef, organizationId]);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, photo_url: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
+        if (file && organizationId) {
+            // Check file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                setToast({ message: "L'image est trop volumineuse (Max 2Mo)", type: "error" });
+                return;
+            }
+
+            setIsUploadingPhoto(true);
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `avatar-${Date.now()}.${fileExt}`;
+                const filePath = `avatars/${organizationId}/${fileName}`;
+
+                const { url, error } = await uploadFile(BUCKETS.PUBLIC_ASSETS, filePath, file);
+                if (error) throw error;
+
+                setFormData(prev => ({ ...prev, photo_url: url || "" }));
+                setToast({ message: "Photo ajoutée avec succès", type: "success" });
+            } catch (err) {
+                console.error("Error uploading photo:", err);
+                setToast({ message: "Erreur lors de l'upload de la photo", type: "error" });
+            } finally {
+                setIsUploadingPhoto(false);
+            }
         }
     };
 
@@ -938,24 +978,31 @@ export default function EmployeesPage() {
                                         <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white font-medium gap-2">
                                             <button
                                                 type="button"
+                                                disabled={isUploadingPhoto}
                                                 onClick={() => {
                                                     if (isWebcamOpen) capturePhoto();
                                                     else setIsWebcamOpen(true);
                                                 }}
-                                                className="p-2 hover:bg-white/20 rounded-full"
+                                                className="p-2 hover:bg-white/20 rounded-full disabled:opacity-50"
                                                 title="Take a photo"
                                             >
                                                 <Camera size={24} />
                                             </button>
                                             <button
                                                 type="button"
+                                                disabled={isUploadingPhoto}
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="p-2 hover:bg-white/20 rounded-full"
+                                                className="p-2 hover:bg-white/20 rounded-full disabled:opacity-50"
                                                 title="Upload an image"
                                             >
                                                 <Upload size={24} />
                                             </button>
                                         </div>
+                                        {isUploadingPhoto && (
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+                                                <Loader2 className="animate-spin text-white" size={32} />
+                                            </div>
+                                        )}
                                     </div>
                                     <input
                                         type="file"

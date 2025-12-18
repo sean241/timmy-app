@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Loader2, Save, CheckCircle, Smartphone, Mail, LockIcon, Eye, EyeOff, Camera, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { uploadFile, BUCKETS } from "@/lib/storage";
 import { useLanguage } from "@/app/context/LanguageContext";
 import Toast from "@/components/Toast";
 
@@ -70,18 +71,17 @@ export default function ProfileSettings() {
 
         try {
             // 1. Upload to Supabase Storage
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file);
+            const { url, error: uploadError } = await uploadFile(
+                BUCKETS.PUBLIC_ASSETS,
+                filePath,
+                file
+            );
 
             if (uploadError) {
                 throw uploadError;
             }
 
-            // 2. Get Public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath);
+            const publicUrl = url || "";
 
             // 3. Update Profile
             const { error: updateError } = await supabase

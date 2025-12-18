@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from "@/lib/supabase";
+import { getSecureUrl } from "@/lib/storage";
 import { useLanguage } from '@/app/context/LanguageContext';
 import {
     Search, Calendar, Download, Plus,
@@ -60,6 +61,9 @@ export default function AttendanceLogsPage() {
 
     // Toast State
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+    // Secure URL Mapping
+    const [secureUrlMap, setSecureUrlMap] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (toast) {
@@ -305,7 +309,6 @@ export default function AttendanceLogsPage() {
         return { start, end };
     };
 
-    // Derived Logic
     const filteredLogs = useMemo(() => {
         const { start, end } = getFilterRange();
 
@@ -324,6 +327,31 @@ export default function AttendanceLogsPage() {
             return true;
         });
     }, [logs, searchQuery, filterSite, dateFilter, customStartDate, customEndDate]);
+
+    // Handle Secure URLs for Photos
+    useEffect(() => {
+        const fetchSecureUrls = async () => {
+            const logsWithPhotos = filteredLogs.filter(log => log.photo && !log.photo.startsWith('http'));
+
+            if (logsWithPhotos.length === 0) return;
+
+            const newUrls: Record<string, string> = {};
+            await Promise.all(logsWithPhotos.map(async (log) => {
+                if (log.photo && !secureUrlMap[log.id]) {
+                    const result = await getSecureUrl(log.photo) as unknown as { url: string | null };
+                    if (result?.url) {
+                        newUrls[log.id] = result.url;
+                    }
+                }
+            }));
+
+            if (Object.keys(newUrls).length > 0) {
+                setSecureUrlMap(prev => ({ ...prev, ...newUrls }));
+            }
+        };
+
+        fetchSecureUrls();
+    }, [filteredLogs]);
 
     // Timesheet Calculation
     const timesheetData = useMemo(() => {
@@ -843,7 +871,7 @@ export default function AttendanceLogsPage() {
                                                     {emp.first_name?.[0]}{emp.last_name?.[0]}
                                                 </div>
                                                 <span className="font-bold text-slate-800">{emp.first_name} {emp.last_name}</span>
-                                                <span className="text-xs text-slate-400">{emp.job_title} • Attendu à {emp.expectedStart}</span>
+                                                <span className="text-xs text-slate-400">{emp.job_title} • Attendu à {(emp as any).expectedStart}</span>
                                             </div>
                                             <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">
                                                 {t.dashboard?.absentTag || "Absent"}
@@ -1187,27 +1215,30 @@ export default function AttendanceLogsPage() {
 
                                             {/* PHOTO (Zoom on hover) */}
                                             <td className="p-4">
-                                                {log.photo ? (
-                                                    <div className="relative group/photo h-10 w-10">
-                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                        <img
-                                                            src={log.photo}
-                                                            alt="Proof"
-                                                            className="h-10 w-10 rounded object-cover border border-slate-200 cursor-zoom-in"
-                                                        />
-                                                        {/* Tooltip Zoom Image (On hover) */}
-                                                        <div className="absolute left-12 top-[-50px] hidden group-hover/photo:block z-50">
+                                                {(() => {
+                                                    const displayUrl = log.photo?.startsWith('http') ? log.photo : secureUrlMap[log.id];
+                                                    if (!displayUrl) return <span className="text-xs text-slate-400 italic">No Photo</span>;
+
+                                                    return (
+                                                        <div className="relative group/photo h-10 w-10">
                                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                                             <img
-                                                                src={log.photo}
-                                                                alt="Zoom"
-                                                                className="h-32 w-32 rounded-lg border-2 border-white shadow-xl object-cover"
+                                                                src={displayUrl}
+                                                                alt="Proof"
+                                                                className="h-10 w-10 rounded object-cover border border-slate-200 cursor-zoom-in"
                                                             />
+                                                            {/* Tooltip Zoom Image (On hover) */}
+                                                            <div className="absolute left-12 top-[-50px] hidden group-hover/photo:block z-50">
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                <img
+                                                                    src={displayUrl}
+                                                                    alt="Zoom"
+                                                                    className="h-32 w-32 rounded-lg border-2 border-white shadow-xl object-cover"
+                                                                />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-slate-400 italic">No Photo</span>
-                                                )}
+                                                    );
+                                                })()}
                                             </td>
 
                                             {/* TIME & STATUS */}

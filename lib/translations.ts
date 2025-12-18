@@ -321,8 +321,22 @@ export const translations = {
             }
         },
         dashboard: {
+            greeting: "Bonjour, {name} 👋",
+            subtitleActivity: "Voici ce qui se passe sur vos sites aujourd'hui.",
+            subtitleQuiet: "Tout est calme pour le moment.",
+            onTime: "À l'heure",
+            lateTag: "Retard",
+            departure: "Départ",
+            planningBtn: "Planning",
+            entriesBtn: "Pointages",
+            staffBtn: "Staff",
             totalEmployees: "Total Employés",
             siteActivity: "Activité des Sites",
+            liveFeed: "En Direct (Live Feed)",
+            alertsTitle: "Alertes & Statuts",
+            helpTitle: "Besoin d'aide ?",
+            helpDesc: "Contactez notre support dédié.",
+            helpBtn: "Support WhatsApp",
             title: "Suivi des Heures",
             subtitle: "Consultez, corrigez et validez les pointages de vos équipes.",
             filters: {
@@ -371,8 +385,10 @@ export const translations = {
             manualEntry: "Pointage Manuel",
             validatePeriod: "Valider la Période",
             periodLocked: "Période Validée",
-            confirmLock: "Attention: Cette action va figer les données pour la période sélectionnée. Continuer ?"
+            confirmLock: "Attention: Cette action va figer les données pour la période sélectionnée. Continuer ?",
+            futureEntryError: "Impossible de pointer dans le futur"
         },
+
         systemLogs: {
             title: "Journaux système",
             desc: "Consultez l'historique des actions effectuées sur l'application.",
@@ -741,6 +757,22 @@ export const translations = {
                 mobileMoneyExports: {
                     title: "Exports Mobile Money",
                     desc: "Générez des fichiers de paiement de masse compatibles portails Airtel & Moov."
+                },
+                cegid: {
+                    title: "Cegid XRP",
+                    desc: "Synchronisation des matricules et import des variables de paie pour les grandes structures."
+                },
+                odoo: {
+                    title: "Odoo RH",
+                    desc: "Connecteur bidirectionnel pour le module Ressources Humaines d'Odoo."
+                },
+                powerbi: {
+                    title: "Power BI",
+                    desc: "Tableaux de bord analytiques avancés pour une vision 360 de votre masse salariale."
+                },
+                teams: {
+                    title: "Microsoft Teams",
+                    desc: "Notifications de retard et départ directement dans vos canaux Teams."
                 }
             },
             profile: {
@@ -754,7 +786,8 @@ export const translations = {
                 confirmPassword: "Confirmer le mot de passe",
                 enable2FA: "Activer l'Authentification à Double Facteur (2FA)",
                 preferences: "Préférences",
-                language: "Langue"
+                language: "Langue",
+                languageDesc: "Utilisée pour votre interface et vos notifications."
             }
         },
         sites: {
@@ -1131,8 +1164,22 @@ export const translations = {
             expand: "Expand sidebar"
         },
         dashboard: {
+            greeting: "Hello, {name} 👋",
+            subtitleActivity: "Here is what's happening on your sites today.",
+            subtitleQuiet: "Everything is quiet for now.",
+            onTime: "On time",
+            lateTag: "Late",
+            departure: "Departure",
+            planningBtn: "Schedule",
+            entriesBtn: "Time Entries",
+            staffBtn: "Staff",
             totalEmployees: "Total Employees",
             siteActivity: "Site Activity",
+            liveFeed: "Live Feed",
+            alertsTitle: "Alerts & Status",
+            helpTitle: "Need help?",
+            helpDesc: "Contact our dedicated support.",
+            helpBtn: "WhatsApp Support",
             title: "Time Entries",
             subtitle: "Track, edit, and validate your team's attendance.",
             filters: {
@@ -1181,954 +1228,972 @@ export const translations = {
             manualEntry: "Manual Entry",
             validatePeriod: "Validate Period",
             periodLocked: "Period Locked",
-            confirmLock: "Warning: This will freeze data for the selected period. Continue?"
+            confirmLock: "Warning: This will freeze data for the selected period. Continue?",
+            futureEntryError: "Cannot clock in the future"
+        }
+    },
+    days: {
+        mon: { short: "Mon", full: "Monday" },
+        tue: { short: "Tue", full: "Tuesday" },
+        wed: { short: "Wed", full: "Wednesday" },
+        thu: { short: "Thu", full: "Thursday" },
+        fri: { short: "Fri", full: "Friday" },
+        sat: { short: "Sat", full: "Saturday" },
+        sun: { short: "Sun", full: "Sunday" }
+    },
+    login: {
+        title: "Login to your account",
+        noAccount: "Don't have an account?",
+        rememberMe: "Remember me",
+        orLoginWith: "or login with",
+        forgotPassword: "Forgot password?",
+        heroTitle: "Simplify your team management.",
+        heroSubtitle: "Manage your employees, schedules, attendance, communications, and reports in real-time.",
+        errors: {
+            default: "Error logging in",
+            invalid_credentials: "Invalid email or password",
+        }
+    },
+    signup: {
+        welcome: "Welcome!",
+        subtitle: "To start, tell us who you are.",
+        manager: {
+            title: "You are a Manager",
+            desc: "I want to create and manage my team.",
+            createTitle: "Create Manager Account",
+            trial: "✨ 21-day free trial",
+            workEmail: "Work Email",
+            verifyPhone: "Verify Number",
+            startTrial: "Start Free Trial",
         },
-        days: {
-            mon: { short: "Mon", full: "Monday" },
-            tue: { short: "Tue", full: "Tuesday" },
-            wed: { short: "Wed", full: "Wednesday" },
-            thu: { short: "Thu", full: "Thursday" },
-            fri: { short: "Fri", full: "Friday" },
-            sat: { short: "Sat", full: "Saturday" },
-            sun: { short: "Sun", full: "Sunday" }
+        employee: {
+            title: "You are an Employee",
+            desc: "I want to join an existing team.",
+            areaTitle: "Employee Area",
+            instruction: "To join Timmy, ask your manager to send you an invitation or your personal PIN code.",
+            chooseOther: "Choose another profile",
         },
-        login: {
-            title: "Login to your account",
-            noAccount: "Don't have an account?",
-            rememberMe: "Remember me",
-            orLoginWith: "or login with",
-            forgotPassword: "Forgot password?",
-            heroTitle: "Simplify your team management.",
-            heroSubtitle: "Manage your employees, schedules, attendance, communications, and reports in real-time.",
-            errors: {
-                default: "Error logging in",
-                invalid_credentials: "Invalid email or password",
-            }
+        otp: {
+            placeholder: "Code (6 digits)",
+            sent: "Code sent!",
+            verify: "Verify",
+            error: "Incorrect code. Please try again.",
+            phoneRequired: "Please enter a valid phone number.",
+            verifyFirst: "Please verify your phone number.",
         },
-        signup: {
-            welcome: "Welcome!",
-            subtitle: "To start, tell us who you are.",
-            manager: {
-                title: "You are a Manager",
-                desc: "I want to create and manage my team.",
-                createTitle: "Create Manager Account",
-                trial: "✨ 21-day free trial",
-                workEmail: "Work Email",
-                verifyPhone: "Verify Number",
-                startTrial: "Start Free Trial",
-            },
-            employee: {
-                title: "You are an Employee",
-                desc: "I want to join an existing team.",
-                areaTitle: "Employee Area",
-                instruction: "To join Timmy, ask your manager to send you an invitation or your personal PIN code.",
-                chooseOther: "Choose another profile",
-            },
-            otp: {
-                placeholder: "Code (6 digits)",
-                sent: "Code sent!",
-                verify: "Verify",
-                error: "Incorrect code. Please try again.",
-                phoneRequired: "Please enter a valid phone number.",
-                verifyFirst: "Please verify your phone number.",
-            },
-            errors: {
-                passwordLength: "Password must be at least 6 characters.",
-                passwordMatch: "Passwords do not match.",
-                default: "An error occurred during signup.",
-            },
-            success: {
-                title: "Account Created!",
-                message: "Welcome to Timmy",
-                emailSent: "A confirmation email has been sent to",
-                setup: "Setup my workspace",
-            },
-            hero: {
-                managerTitle: "Pilot your activity.",
-                managerDesc: "Manage your schedules, track hours, and optimize your payroll with ease.",
-                employeeTitle: "Join your team.",
-                employeeDesc: "Access your schedules and clock in easily.",
-            }
+        errors: {
+            passwordLength: "Password must be at least 6 characters.",
+            passwordMatch: "Passwords do not match.",
+            default: "An error occurred during signup.",
         },
-        forgotPassword: {
-            title: "Forgot password?",
-            desc: "Enter your email address and we will send you a link to reset your password.",
-            placeholder: "example@timmy.app",
-            submit: "Send Link",
-            successTitle: "Email sent!",
-            successDesc: "If an account exists with the address",
-            successDesc2: "you will receive an email with instructions to reset your password.",
-            resend: "Resend email",
-            heroTitle: "Account Recovery",
-            heroDesc: "Don't worry, it happens to the best of us.",
+        success: {
+            title: "Account Created!",
+            message: "Welcome to Timmy",
+            emailSent: "A confirmation email has been sent to",
+            setup: "Setup my workspace",
         },
-        onboarding: {
-            step1: {
-                title: "Your Company",
-                desc: "Let's start by setting up your workspace.",
-                companyName: "Company Name",
-                companyPlaceholder: "Ex: BTP Gabon Services",
-                sector: "Business Sector",
-                sectorPlaceholder: "Search for a sector...",
-                country: "Country",
-                countryDesc: "The country defines your currency and timezone.",
-            },
-            step2: {
-                title: "First Work Site",
-                desc: "Where will your team clock in?",
-                siteName: "Site / Project Name",
-                sitePlaceholder: "Ex: Downtown Project",
-                address: "Address",
-                addressPlaceholder: "For future geofencing",
-            },
+        hero: {
+            managerTitle: "Pilot your activity.",
+            managerDesc: "Manage your schedules, track hours, and optimize your payroll with ease.",
+            employeeTitle: "Join your team.",
+            employeeDesc: "Access your schedules and clock in easily.",
+        }
+    },
+    forgotPassword: {
+        title: "Forgot password?",
+        desc: "Enter your email address and we will send you a link to reset your password.",
+        placeholder: "example@timmy.app",
+        submit: "Send Link",
+        successTitle: "Email sent!",
+        successDesc: "If an account exists with the address",
+        successDesc2: "you will receive an email with instructions to reset your password.",
+        resend: "Resend email",
+        heroTitle: "Account Recovery",
+        heroDesc: "Don't worry, it happens to the best of us.",
+    },
+    onboarding: {
+        step1: {
+            title: "Your Company",
+            desc: "Let's start by setting up your workspace.",
+            companyName: "Company Name",
+            companyPlaceholder: "Ex: BTP Gabon Services",
+            sector: "Business Sector",
+            sectorPlaceholder: "Search for a sector...",
+            country: "Country",
+            countryDesc: "The country defines your currency and timezone.",
+        },
+        step2: {
+            title: "First Work Site",
+            desc: "Where will your team clock in?",
+            siteName: "Site / Project Name",
+            sitePlaceholder: "Ex: Downtown Project",
+            address: "Address",
+            addressPlaceholder: "For future geofencing",
+        },
 
-            step3: {
-                title: "Your Profile",
-                desc: "Create your profile to test clocking in yourself.",
-                whatsapp: "WhatsApp Number",
-                whatsappPlaceholder: "To receive your notifications",
-                whatsappNote: "We will ask for your consent later.",
-                pin: "PIN Code (To clock in)",
-                submit: "Finish Setup",
-            },
-            sectors: [
-                "Construction",
-                "Restaurant / Hotel",
-                "Health / Medical",
-                "Retail",
-                "Logistics / Transport",
-                "Personal Services",
-                "Industry",
-                "Agriculture",
-                "Education",
-                "Technology / IT",
-                "Other"
-            ],
-            noResult: "No result"
+        step3: {
+            title: "Your Profile",
+            desc: "Create your profile to test clocking in yourself.",
+            whatsapp: "WhatsApp Number",
+            whatsappPlaceholder: "To receive your notifications",
+            whatsappNote: "We will ask for your consent later.",
+            pin: "PIN Code (To clock in)",
+            submit: "Finish Setup",
         },
-        feedback: {
-            title: "Give Feedback",
-            subtitle: "Help us improve Timmy!",
-            type: "Feedback Type",
-            types: {
-                bug: "Bug 🐛",
-                idea: "Idea 💡",
-                other: "Other ❤️"
-            },
-            message: "Your Message",
-            placeholder: "Tell us what you think...",
-            nps: "Would you recommend Timmy?",
-            submit: "Send Feedback",
-            success: "Thanks for your feedback!",
-            cancel: "Cancel"
+        sectors: [
+            "Construction",
+            "Restaurant / Hotel",
+            "Health / Medical",
+            "Retail",
+            "Logistics / Transport",
+            "Personal Services",
+            "Industry",
+            "Agriculture",
+            "Education",
+            "Technology / IT",
+            "Other"
+        ],
+        noResult: "No result"
+    },
+    feedback: {
+        title: "Give Feedback",
+        subtitle: "Help us improve Timmy!",
+        type: "Feedback Type",
+        types: {
+            bug: "Bug 🐛",
+            idea: "Idea 💡",
+            other: "Other ❤️"
         },
-        support: {
-            title: "Contact Support",
-            subtitle: "A question? A problem? We're here.",
-            type: "What is this about?",
-            types: {
-                technical: "Technical Issue",
-                billing: "Billing & Subscription",
-                feature: "Feature Question",
-                account: "Account Access",
-                other: "Other Request"
-            },
-            subType: "Details",
-            subTypes: {
-                technical: {
-                    error: "Error message displayed",
-                    crash: "App freeze / Crash",
-                    slow: "Unusual slowness",
-                    mobile: "Issue on mobile/tablet",
-                    other: "Other bug"
-                },
-                billing: {
-                    inovice: "Invoice error",
-                    payment: "Payment failed",
-                    upgrade: "Change plan",
-                    cancel: "Cancel subscription"
-                },
-                feature: {
-                    howto: "How to use?",
-                    missing: "Missing feature",
-                    improvement: "Improvement suggestion"
-                },
-                account: {
-                    login: "Cannot login",
-                    password: "Forgot password",
-                    invite: "Invite verification",
-                    mfa: "2FA Issue"
-                },
-                other: {
-                    partner: "Partnership",
-                    feedback: "General feedback",
-                    other: "Other"
-                }
-            },
-            priority: "Priority",
-            priorities: {
-                low: "Low (Info)",
-                medium: "Medium (Need help)",
-                high: "High (Blocking)"
-            },
-            message: "Problem Description",
-            placeholder: "Describe your issue in detail...",
-            submit: "Send Request",
-            success: "Request Sent!",
-            successDesc: "Our team will reply via email within 24h.",
-            cancel: "Close"
+        message: "Your Message",
+        placeholder: "Tell us what you think...",
+        nps: "Would you recommend Timmy?",
+        submit: "Send Feedback",
+        success: "Thanks for your feedback!",
+        cancel: "Cancel"
+    },
+    support: {
+        title: "Contact Support",
+        subtitle: "A question? A problem? We're here.",
+        type: "What is this about?",
+        types: {
+            technical: "Technical Issue",
+            billing: "Billing & Subscription",
+            feature: "Feature Question",
+            account: "Account Access",
+            other: "Other Request"
         },
-        help: {
-            title: "Help Center & FAQ",
-            subtitle: "Find quick answers to your questions about using Timmy.",
-            searchPlaceholder: "Search a question (e.g. schedule, invoice...)",
-            contactTitle: "Can't find your answer?",
-            contactDesc: "Our support team is available to help you.",
-            contactBtn: "Contact Support",
-            categories: {
-                general: "General & Account",
-                planning: "Schedule & Shifts",
-                tracking: "Time & Attendance",
-                employees: "Employees & Teams",
-                kiosks: "Kiosks & Tablets",
-                billing: "Billing"
-            },
-            faq: {
-                general: [
-                    { q: "How do I change my password?", a: "Go to Settings > My Profile. You will find a 'Security' section to update your password." },
-                    { q: "Can I change the language?", a: "Yes, Timmy is available in French and English. Change the language via the selector at the bottom left of the sidebar or in Settings > My Profile." },
-                    { q: "How do user roles work?", a: "The Owner has all rights. The Manager manages teams and schedules but cannot see billing. The Accountant has read-only access to reports." }
-                ],
-                planning: [
-                    { q: "How to publish a schedule?", a: "Once shifts are created, they are in 'Draft' mode (striped). Click the 'Publish' button top right to make them visible to employees and send notifications." },
-                    { q: "Can I copy a typical week?", a: "Absolutely. Use the 'Copy' button in the planning toolbar. You can duplicate the current week to multiple future weeks at once." },
-                    { q: "What are templates used for?", a: "Templates allow you to create recurring shifts (e.g., 'Morning 8am-4pm'). Drag and drop a template onto the calendar to create a shift instantly." }
-                ],
-                tracking: [
-                    { q: "What is an anomaly?", a: "An anomaly is detected when an employee clocked in but forgot to clock out the previous day. You must manually fix it in 'Time Entries'." },
-                    { q: "How to add a forgotten clock-in?", a: "Go to 'Time Entries' > 'Logs', then click 'Manual Entry'. Select the employee, date, and in/out times." },
-                    { q: "How to validate hours for payroll?", a: "In 'Time Entries', use the 'Validate Period' button. This locks the data to prevent further modification and ensures payroll integrity." }
-                ],
-                employees: [
-                    { q: "How to invite an employee?", a: "Go to 'Team' and click 'New Employee'. Fill in their info. If they have a WhatsApp number, they will receive their access directly." },
-                    { q: "What is the PIN code for?", a: "The PIN code is unique to each employee. It is what they must enter on the tablet (Kiosk) to clock in and out." },
-                    { q: "How to archive an employee?", a: "In the employee card, click 'Archive'. Historical data is kept, but they can no longer clock in and won't appear in active filters." }
-                ],
-                kiosks: [
-                    { q: "Does offline mode work?", a: "Yes! Tablets record clock-ins even without internet. They will automatically sync as soon as the connection is restored." },
-                    { q: "How to pair a new tablet?", a: "Install the Kiosk app on the tablet. It will show a code. In your admin, go to 'Terminals' > 'New Kiosk' and enter this code." },
-                    { q: "Is the photo mandatory?", a: "You can configure this per terminal. It's useful to prevent 'buddy punching' (clocking in for a colleague)." }
-                ],
-                billing: [
-                    { q: "What are the payment methods?", a: "We accept credit cards and mobile money (Airtel Money, Moov Money) via our payment partner." },
-                    { q: "Where can I find my invoices?", a: "Your invoices are available and downloadable in PDF format in the Settings > Subscription section." }
-                ]
-            }
-        },
-        updatePassword: {
-            title: "New Password",
-            desc: "Enter your new secure password.",
-            newPassword: "New Password",
-            confirmPassword: "Confirm Password",
-            submit: "Update Password",
-            successTitle: "Password Updated!",
-            successDesc: "You will be redirected to the login page...",
-            goToLogin: "Go to Login",
-            errors: {
-                length: "Password must be at least 6 characters.",
-                match: "Passwords do not match.",
-                default: "An error occurred.",
-            }
-        },
-        systemLogs: {
-            title: "System Logs",
-            desc: "View the history of actions performed on the application.",
-            table: {
-                action: "Action",
-                user: "User",
-                details: "Details",
-                date: "Date",
-                level: "Level"
-            },
-            levels: {
-                INFO: "Info",
-                WARN: "Warning",
-                ERROR: "Error"
-            },
-            empty: "No logs found.",
-            export: "Export to JSON",
-            searchPlaceholder: "Search by action, user...",
-            viewDetails: "View Details",
-            hideDetails: "Hide Details"
-        },
-        settings: {
-            title: "Settings",
-            desc: "Manage your company, team, and preferences.",
-            tabs: {
-                general: "General",
-                team: "Team",
-                notifications: "Notifications",
-                billing: "Billing",
-                integrations: "Integrations",
-                logs: "System Logs",
-                profile: "My Profile"
-            },
-            general: {
-                companyInfo: "Company Information",
-                save: "Save",
-                saving: "Saving...",
-                saved: "Saved!",
-                logo: "Company Logo",
-                uploadLogo: "Upload Logo",
-                logoDesc: "JPG, PNG or SVG. Max 2MB. Will appear on your tablets.",
-                companyName: "Company Name",
-                industry: "Industry",
-                currency: "Currency",
-                timezone: "Timezone",
-                payrollRules: "Payroll Rules",
-                payrollCycle: "Payroll Cycle",
-                exportFormat: "Default Export Format",
-                attendanceRules: "Attendance Rules (Anti-Conflict)",
-                latenessTolerance: "Lateness Tolerance",
-                latenessDesc: "Threshold before marking as 'Late'.",
-                roundingRule: "Rounding Rule",
-                roundingDesc: "For overtime calculation.",
-                autoLunch: "Auto Lunch Break",
-                autoLunchDesc: "Automatically deduct break time",
-                ifDay: "if day >",
-                scheduleSettings: "Schedule Settings",
-                stdDayDuration: "Standard Day Duration",
-                hours: "hours",
-                startOfWeek: "Start of Week",
-                startTime: "Start Time (Arrival)",
-                endTime: "End Time (Departure)",
-                workingDays: "Company Working Days",
-                workingDaysDesc: "Unchecked days will be considered as overtime.",
-                nightHours: "Night Hours (Premium)",
-                from: "From",
-                to: "To",
-                sector: {
-                    btp: "Construction",
-                    restauration: "Restaurant / Hotel",
-                    retail: "Retail",
-                    health: "Health / Medical",
-                    logistics: "Logistics / Transport",
-                    services: "Services",
-                    other: "Other"
-                },
-                payrollCycles: {
-                    monthly: "1st to 30/31 (Calendar Month)",
-                    midMonth: "15th to 15th",
-                    weekly: "Weekly",
-                    biweekly: "Bi-weekly"
-                },
-                latenessTolerances: {
-                    none: "None (Strict)",
-                    min5: "5 minutes",
-                    min10: "10 minutes",
-                    min15: "15 minutes"
-                },
-                roundingRules: {
-                    exact: "Exact minute",
-                    quarter: "Quarter hour (15 min)",
-                    half: "Half hour (30 min)"
-                },
-                weekDays: {
-                    monday: "Monday",
-                    sunday: "Sunday"
-                },
-                shortWeekDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-                lunchDuration: {
-                    min30: "30 min",
-                    min45: "45 min",
-
-                    hour1: "1 hour",
-                    min90: "1h30"
-                },
-                export: {
-                    xlsx: "Excel (.xlsx)",
-                    csv: "CSV (.csv)",
-                    pdf: "PDF (.pdf)"
-                },
-                rounding: {
-                    exact: "Exact minute",
-                    min5: "5 minutes",
-                    min15: "15 minutes",
-                    min30: "30 minutes"
-                },
-                break: {
-                    min30: "30 min",
-                    min45: "45 min",
-                    min60: "1 hour",
-                    min90: "1h30"
-                },
-                week: {
-                    monday: "Monday",
-                    sunday: "Sunday",
-                    saturday: "Saturday"
-                },
-                alert: {
-                    min15: "15 minutes",
-                    min30: "30 minutes",
-                    min60: "1 hour",
-                    min120: "2 hours"
-                }
-            },
-            team: {
-                title: "User Management",
-                desc: "Manage access to your Timmy dashboard.",
-                invite: "Invite Member",
-                table: {
-                    user: "User",
-                    role: "Role",
-                    status: "Status",
-                    actions: "Actions",
-                    you: "You",
-                    active: "Active",
-                    invited: "Invited"
-                },
-                roles: {
-                    owner: "Owner",
-                    manager: "Manager",
-                    accountant: "Accountant",
-                    infoTitle: "💡 About Roles",
-                    ownerDesc: "Full access, including billing and deletion.",
-                    managerDesc: "Manage teams and schedules. No billing access.",
-                    accountantDesc: "Read-only access to payroll reports and exports."
-                },
-                inviteModal: {
-                    title: "Invite Member",
-                    email: "Email Address",
-                    role: "Role",
-                    cancel: "Cancel",
-                    send: "Send Invitation",
-                    sending: "Sending...",
-                    sent: "Sent!"
-                }
-            },
-            notifications: {
-                title: "Notification Center",
-                channels: "Communication Channels",
-                emailDesc: "For reports and admin alerts",
-                whatsappDesc: "For urgent alerts and employees",
-                operationalAlerts: "Operational Alerts (Emergencies)",
-                lateAlert: "When an employee is > 15 min late",
-                absentAlert: "When an employee is absent > 30 min after shift start",
-                earlyAlert: "When an employee leaves before shift end (Early Departure)",
-                technicalAlerts: "Technical & System Alerts",
-                critical: "Critical",
-                syncAlert: "Alert me if a kiosk hasn't synced for more than 1 hour",
-                reports: "Reports & Summaries",
-                dailyReport: "Daily report by email at 08:00",
-                weeklyReport: "Weekly Summary (Sunday evening)",
-                employeeAlerts: "Employee Alerts (What THEY receive)",
-                scheduleAlert: "Receive my schedule on Sunday evening (WhatsApp)",
-                shiftReminder: "Reminder 1h before my shift",
-                whatsappConsent: "WhatsApp messages are only sent to employees who have consented via their profile."
+        subType: "Details",
+        subTypes: {
+            technical: {
+                error: "Error message displayed",
+                crash: "App freeze / Crash",
+                slow: "Unusual slowness",
+                mobile: "Issue on mobile/tablet",
+                other: "Other bug"
             },
             billing: {
-                title: "My Subscription",
-                subtitle: "Manage your plan, invoices, and payment methods.",
-                active: "ACTIVE",
-                activePlan: "Active Plan",
-                currentPlan: "Your current plan",
-                monthly: "Monthly",
-                annual: "Annual",
-                annualDiscount: "-20%",
-                renewalDate: "Renewal on {date}",
-                currencyPerMonth: "FCFA / month",
-                perActiveEmployee: "Per active employee.",
-                usageTitle: "Current usage",
-                activeEmployees: "Active employees",
-                connectedKiosks: "Connected kiosks",
-                locationsCount: "Number of locations",
-                needMore: "Need more?",
-                upgradePrompt: "Upgrade to Unlimited Plan",
-                nextPayment: "Next payment",
-                renewalDesc: "Your annual subscription will be automatically renewed. You'll receive a notification 7 days before.",
-                changePlan: "Change plan",
-                modalTitle: "Take your management to the next level",
-                modalSubtitle: "Change plans at any time. Billing will be adjusted pro-rata for remaining days.",
-                planStarter: {
-                    name: "Starter",
-                    price: "Free",
-                    desc: "To test the application.",
-                    features: ["10 employees max", "1 Kiosk", "Basic tracking"],
-                    action: "Switch to Starter"
-                },
-                planPro: {
-                    name: "Pro",
-                    features: ["Unlimited employees", "Offline Mode", "GPS & Photo anti-fraud", "Payroll Exports (Excel)"]
-                },
-                planEnterprise: {
-                    name: "Enterprise",
-                    price: "Quote based",
-                    desc: "Centralized billing & volume.",
-                    recommended: "Recommended",
-                    featuresTitle: "Everything in Pro, plus:",
-                    features: [
-                        "Advanced Security (SSO, Audit Logs)",
-                        "Custom API & Integrations (ERP)",
-                        "Dedicated Account Manager 24/7",
-                        "Free onsite training"
-                    ],
-                    action: "Contact to Upgrade",
-                    responseTime: "Guaranteed response within 2 business hours."
-                },
-                securePayment: "SSL Secure Payment",
-                needHelp: "Need help?",
-                invoiceHistory: "Invoice history",
-                viewAll: "View all",
-                table: {
-                    date: "Date",
-                    reference: "Reference",
-                    amount: "Amount",
-                    status: "Status",
-                    action: "Action"
-                },
-                status: {
-                    paid: "Paid",
-                    pending: "Pending",
-                    validation: "Validation",
-                    today: "Today"
-                },
-                paymentMethod: "Payment method",
-                default: "Default",
-                manualPayment: "Manual payment",
-                declarePayment: "Declare a payment",
-                addMethod: "Add a method",
-                billingDetails: "Billing details",
-                emailDesc: "Invoices will be sent to this address.",
-                nif: "NIF",
-                rccm: "RCCM",
-                billingEmail: "Billing email",
-                airtelModal: {
-                    title: "Airtel Money Payment",
-                    instructions: "Payment instructions:",
-                    sendTo: "Send the amount to:",
-                    name: "(Name: Timmy SAS)",
-                    step2: "Wait for the confirmation SMS with the transaction ID.",
-                    step3: "Fill in the form below for validation.",
-                    transactionId: "Transaction ID",
-                    idDesc: "The ID is found in the Airtel confirmation SMS.",
-                    proof: "Proof of payment",
-                    uploadDesc: "Click to add a screenshot",
-                    uploadLimit: "PNG, JPG up to 5MB",
-                    confirm: "Confirm payment",
-                    validating: "Validating..."
-                },
-                editModal: {
-                    title: "Billing information",
-                    companyName: "Company name",
-                    address: "Address",
-                    city: "City & Country",
-                    saving: "Saving...",
-                    save: "Save changes"
-                },
-                toasts: {
-                    paymentSuccess: "Payment successfully declared. Validation pending.",
-                    billingUpdated: "Billing information updated",
-                    planEnterpriseSent: "Your request for the Enterprise plan has been sent. An advisor will contact you."
-                }
+                inovice: "Invoice error",
+                payment: "Payment failed",
+                upgrade: "Change plan",
+                cancel: "Cancel subscription"
             },
-            integrations: {
-                title: "Integrations",
-                subtitle: "Connect Timmy to your favorite payroll, HR, and communication tools.",
-                searchPlaceholder: "Search for an integration (e.g. Sage, Excel...)",
-                categories: {
-                    all: "All",
-                    communication: "Communication",
-                    productivity: "Productivity",
-                    finance: "Finance",
-                    developer: "Developer"
-                },
-                status: {
-                    active: "Active",
-                    inactive: "Inactive",
-                    alwaysActive: "Always active",
-                    comingSoon: "Coming soon"
-                },
-                actions: {
-                    configure: "Configure",
-                    learnMore: "Learn more"
-                },
-                missingTool: {
-                    title: "Missing a tool?",
-                    desc: "Tell us what software you use, we'll add it to the roadmap.",
-                    action: "Suggest an integration"
-                },
-                api: {
-                    title: "Developer API Access",
-                    desc: "Have an internal IT team? Use our secure REST API to build your own connectors and extract raw data in real-time.",
-                    docs: "Documentation",
-                    generateKey: "Generate an API Key"
-                },
-                whatsapp: {
-                    title: "WhatsApp Business",
-                    desc: "The #1 channel. Automatically send shifts and alerts directly to workers' mobiles.",
-                    quota: "Message Quota",
-                    quality: "Line Quality",
-                    excellent: "Excellent"
-                },
-                googleSheets: {
-                    title: "Google Sheets",
-                    desc: "Sync your attendance in real-time to a Google Sheets sheet.",
-                    activeTitle: "Active sync",
-                    lastExport: "Last export: {time}",
-                    viewSheet: "View sheet"
-                },
-                sage: {
-                    title: "Sage Payroll",
-                    desc: "The accounting standard. Native export of hours to Sage 100c and Sage Business Cloud.",
-                    version: "Version",
-                    lastExport: "Last export"
-                },
-                excel: {
-                    title: "Excel / CSV",
-                    desc: "The universal one. Formatted exports for analysis or import into any third-party system."
-                },
-                outlook: {
-                    title: "Outlook Calendar",
-                    desc: "Display production schedules directly in Microsoft 365 Outlook calendars.",
-                    syncActive: "Active bi-directional sync"
-                },
-                googleDrive: {
-                    title: "Google Drive",
-                    desc: "Legal and automatic archiving of photo evidence and signed timesheets.",
-                    connectedTo: "Connected to \"{name}\"",
-                    syncCount: "{count} files synced this week."
-                },
-                sms: {
-                    title: "SMS Gateway",
-                    desc: "SMS alerts (Infobip/Twilio) to reach 100% of employees, even without smartphones.",
-                    balance: "SMS Balance"
-                },
-                mobileMoneyExports: {
-                    title: "Mobile Money Exports",
-                    desc: "Generate bulk payment files compatible with Airtel & Moov portals."
-                }
+            feature: {
+                howto: "How to use?",
+                missing: "Missing feature",
+                improvement: "Improvement suggestion"
             },
-            profile: {
-                title: "My Profile",
-                firstName: "First Name",
-                lastName: "Last Name",
-                email: "Email",
-                phone: "Phone Number",
-                security: "Security",
-                newPassword: "New Password",
-                confirmPassword: "Confirm Password",
-                enable2FA: "Enable Two-Factor Authentication (2FA)",
-                preferences: "Preferences",
-                language: "Language"
+            account: {
+                login: "Cannot login",
+                password: "Forgot password",
+                invite: "Invite verification",
+                mfa: "2FA Issue"
+            },
+            other: {
+                partner: "Partnership",
+                feedback: "General feedback",
+                other: "Other"
             }
         },
-        sites: {
-            title: "Sites & Locations",
-            desc: "Manage your work locations and offices.",
-            newSite: "New Site",
-            active: "Active",
-            archived: "Archived",
-            noActive: "No active sites",
-            noArchived: "No archived sites",
-            startAdding: "Start by adding your first location.",
-            archivedDesc: "Archived sites will appear here.",
-            createSite: "Create a site",
-            createCard: "Create a new site",
-            edit: "Edit",
-            archive: "Archive",
-            restore: "Restore",
-            viewSchedule: "View schedule for this site",
-            offline: "Offline",
-            noAddress: "No address provided",
-            modal: {
-                newTitle: "New Location",
-                editTitle: "Edit Site",
-                name: "Site Name",
-                namePlaceholder: "Ex: Head Office, Site A...",
-                city: "City",
-                cityPlaceholder: "Ex: Libreville",
-                address: "Address / Directions",
-                addressPlaceholder: "Ex: Louis District, blue gate...",
-                timezone: "Timezone",
-                geofencing: "Geofencing",
-                disabled: "Disabled",
-                soon: "SOON",
-                cancel: "Cancel",
-                create: "Create Site",
-                update: "Update",
-                saving: "Saving..."
-            },
-            confirm: {
-                archiveTitle: "Archive Site",
-                restoreTitle: "Restore Site",
-                archiveMsg: "Are you sure you want to archive \"{name}\"? It will no longer be accessible for clock-ins.",
-                restoreMsg: "Are you sure you want to restore \"{name}\"?",
-                cancel: "Cancel",
-                confirm: "Confirm"
-            },
-            toast: {
-                fetchError: "Failed to fetch sites",
-                archiveSuccess: "Site archived successfully",
-                restoreSuccess: "Site restored successfully",
-                statusError: "Failed to update site status",
-                updateSuccess: "Site updated successfully",
-                createSuccess: "Site created successfully",
-                saveError: "Failed to save site"
-            }
+        priority: "Priority",
+        priorities: {
+            low: "Low (Info)",
+            medium: "Medium (Need help)",
+            high: "High (Blocking)"
         },
-        kiosks: {
-            title: "Kiosks & Terminals",
-            desc: "Manage your tablets and clock-in stations.",
-            newKiosk: "New Kiosk",
-            noKiosks: "No kiosks configured",
-            startAdding: "Add your first tablet to start clocking in.",
-            createKiosk: "Add Kiosk",
-            status: {
-                ONLINE: "Online",
-                OFFLINE: "Offline",
-                PENDING: "Pending",
-                REVOKED: "Revoked"
-            },
-            table: {
-                name: "Name",
-                site: "Site",
-                status: "Status",
-                version: "Version",
-                lastSync: "Last Sync",
-                pairingCode: "Pairing Code"
-            },
-            modal: {
-                newTitle: "New Kiosk",
-                editTitle: "Edit Kiosk",
-                name: "Kiosk Name",
-                namePlaceholder: "Ex: Main Entrance Tablet",
-                site: "Assigned Site",
-                sitePlaceholder: "Select a site",
-                security: "Security & Options",
-                requirePhoto: "Require Photo",
-                requireBadge: "Require NFC Badge",
-                requireSignature: "Require Signature",
-                cancel: "Cancel",
-                create: "Create Kiosk",
-                update: "Update",
-                saving: "Saving..."
-            },
-            toast: {
-                fetchError: "Error loading kiosks",
-                createSuccess: "Kiosk created successfully",
-                updateSuccess: "Kiosk updated successfully",
-                deleteSuccess: "Kiosk deleted",
-                error: "An error occurred"
-            },
-            confirm: {
-                deleteTitle: "Delete Kiosk",
-                deleteMsg: "Are you sure you want to delete this kiosk? This action cannot be undone.",
-                cancel: "Cancel",
-                confirm: "Delete"
-            }
+        message: "Problem Description",
+        placeholder: "Describe your issue in detail...",
+        submit: "Send Request",
+        success: "Request Sent!",
+        successDesc: "Our team will reply via email within 24h.",
+        cancel: "Close"
+    },
+    help: {
+        title: "Help Center & FAQ",
+        subtitle: "Find quick answers to your questions about using Timmy.",
+        searchPlaceholder: "Search a question (e.g. schedule, invoice...)",
+        contactTitle: "Can't find your answer?",
+        contactDesc: "Our support team is available to help you.",
+        contactBtn: "Contact Support",
+        categories: {
+            general: "General & Account",
+            planning: "Schedule & Shifts",
+            tracking: "Time & Attendance",
+            employees: "Employees & Teams",
+            kiosks: "Kiosks & Tablets",
+            billing: "Billing"
         },
-        employees: {
-            title: "Team",
-            desc: "Manage your employees, daily workers, and their access.",
-            import: "Import Excel / CSV",
-            newEmployee: "New Employee",
-            searchPlaceholder: "Search employee by name or job title...",
-            allSites: "All sites",
-            active: "Active",
-            archived: "Archived",
-            noEmployees: "No employees found",
-            noEmployeesDesc: "Try changing your filters or add a new member.",
-            card: {
-                archived: "Archived",
-                unassigned: "Unassigned",
-                pinCode: "PIN Code",
-                whatsapp: "WhatsApp",
-                verified: "Verified",
-                sendVerification: "Send Verification Message",
-                unverify: "Click to unverify",
-                verifyManually: "Click to verify manually",
-                noPhone: "No phone",
-                edit: "Edit",
-                badge: "Badge PDF",
-                archive: "Archive",
-                unarchive: "Unarchive"
-            },
-            form: {
-                createTitle: "Create Employee",
-                editTitle: "Edit Employee",
-                personalInfo: "Personal Info",
-                firstName: "First Name",
-                lastName: "Last Name",
-                jobTitle: "Job Title / Role",
-                jobPlaceholder: "Ex: Mason, Server...",
-                contact: "Contact",
-                whatsapp: "WhatsApp",
-                email: "Email (Optional)",
-                access: "Access & Security",
-                assignedSite: "Assigned Site",
-                unassigned: "-- Unassigned --",
-                pinCode: "PIN Code (Access)",
-                pinDesc: "Used to clock in on the tablet.",
-                cancel: "Cancel",
-                save: "Save"
-            },
-
-            importModal: {
-                title: "Import Employees",
-                important: "Important",
-                importantDesc: "For the import to work correctly, please use our predefined template.",
-                downloadTemplate: "Download Excel Template",
-                templateDesc: "Format .xlsx - First Name, Last Name, Job Title...",
-                then: "Then",
-                dragDrop: "Drag your file here",
-                browse: "or click to browse",
-                mapColumns: "Map Columns",
-                mapDesc: "Please match the columns from your file to the employee fields.",
-                selectColumn: "-- Select Column --",
-                back: "Back",
-                next: "Next",
-                fileDetected: "File detected",
-                analysis: "Analysis Summary",
-                linesDetected: "lines detected.",
-                newEmployees: "New employees",
-                readyImport: "Ready to import",
-                duplicates: "Duplicates detected",
-                willIgnore: "Will be ignored",
-                hasPin: "already have a PIN code.",
-                autoPin: "will receive an automatic code.",
-                importBtn: "Import {count} employees",
-                successTitle: "Import Successful!",
-                successDesc: "employees have been added to your team.",
-                close: "Close"
-            },
-            badge: {
-                title: "Employee Badge",
-                print: "Print Badge",
-                cancel: "Cancel",
-                role: "Employee",
-                accessBadge: "Personal Access Badge"
-            },
-            toast: {
-                archiveConfirm: "Archive this employee? They will no longer be able to clock in.",
-                unarchiveConfirm: "Unarchive this employee?",
-                archiveError: "Error updating archive status",
-                verifyError: "Error updating verification",
-                verified: "WhatsApp verified manually",
-                unverified: "WhatsApp unverified",
-                orgNotFound: "Organization ID not found",
-                updateError: "Error updating employee",
-                updateSuccess: "Employee updated successfully",
-                createError: "Error creating employee",
-                createSuccess: "Employee created successfully",
-                importError: "Import error for row",
-                importFailed: "Import failed",
-                genericError: "An error occurred"
-            }
-        },
-        planning: {
-            title: "Weekly Schedule",
-            subtitle: "Manage your team's shifts.",
-            publishBtn: "Publish",
-            printBtn: "Print",
-            copyBtn: "Copy",
-            today: "Today",
-            employees: "Employees",
-            unassigned: "Open Shifts",
-            dragHelp: "Drag to assign",
-            addShift: "Add shift",
-            generatedOn: "Generated on",
-            managerSig: "Manager Signature",
-            siteManagerSig: "Site Manager Signature",
-            templates: "Templates",
-            templatesHint: "Drag and drop to create",
-            headerTotal: "Total",
-            filters: {
-                search: "Search employee...",
-                allSites: "All sites",
-            },
-            tooltips: {
-                quickFill: "Auto-Fill (Mon-Fri 8am-5pm)",
-                addOpenShift: "Add Open Shift"
-            },
-            modal: {
-                publishTitle: "Publish Schedule 🚀",
-                confirmPublishTitle: "Confirm Publication?",
-                confirmPublishDesc: "You are about to publish",
-                shiftsDraft: "shifts",
-                currentlyDraft: "currently in draft.",
-                willNotify: "Affected employees will be notified.",
-                channels: {
-                    email: "Email",
-                    emailDesc: "Send schedules via email",
-                    whatsapp: "WhatsApp / SMS",
-                    whatsappDesc: "Instant mobile notification"
-                },
-                cancel: "Cancel",
-                confirm: "Publish",
-                sending: "Sending...",
-                success: "Published!",
-
-                // Copy
-                copyTitle: "Copy Week",
-                source: "Source",
-                destination: "Destination(s)",
-                currentWeek: "Current Week",
-                selectWeeks: "Select weeks to duplicate this schedule to.",
-                copyAction: "Copy to {count} weeks",
-                copySimple: "Copy",
-                copied: "Copied!",
-
-                // Shift
-                newShiftTitle: "New Shift ✨",
-                editShiftTitle: "Edit Shift",
-                start: "Start",
-                end: "End",
-                break: "Break (minutes)",
-                site: "Site",
-                sitePlaceholder: "Select a site...",
-                note: "Note (Optional)",
-                notePlaceholder: "Instructions, tasks...",
-                add: "Add",
-                create: "Create Shift",
-                update: "Update",
-                delete: "Delete",
-                confirmDelete: "Are you sure you want to delete this shift?"
-            },
-            toast: {
-                publishSuccess: "Schedule published successfully! 🚀",
-                publishError: "Publish failed.",
-                addSuccess: "Shift added!",
-                addError: "Error adding shift.",
-                updateSuccess: "Shift updated",
-                deleteSuccess: "Shift deleted",
-                deleteError: "Delete failed",
-                moveError: "Move failed.",
-                copySuccess: "{count} shifts copied successfully",
-                copyError: "Copy failed",
-                magicFillSuccess: "Magic! Added {count} shifts ✨",
-                magicFillEmpty: "Nothing to fill (Mon-Fri full)",
-                noSite: "No sites available",
-                templateApplied: "Template applied ✨"
-            }
-        },
-        referral: {
-            title: "Referral",
-            header: "Grow with us ❤️",
-            heroTitle: "Give 1 month, Get 1 month.",
-            heroDesc: "Invite other companies to join Timmy. For every company that signs up with your link, you both get 1 month of free subscription (Pro Plan).",
-            linkTitle: "Your unique link",
-            copyLink: "Copy Link",
-            copied: "Copied!",
-            shareTitle: "Quick Share",
-            shareLinkedin: "Share on LinkedIn",
-            shareEmail: "Send via Email",
-            emailSubject: "Invitation to discover Timmy 🚀",
-            emailBody: "Hey, I use Timmy to manage my team and shifts. It's a game changer. Here is my link to get 1 month free:",
-            statsTitle: "Your Referrals",
-            totalReferred: "Referred Companies",
-            pending: "Pending",
-            earned: "Earned Credit",
-            emptyState: "No referrals yet. Share your link!"
+        faq: {
+            general: [
+                { q: "How do I change my password?", a: "Go to Settings > My Profile. You will find a 'Security' section to update your password." },
+                { q: "Can I change the language?", a: "Yes, Timmy is available in French and English. Change the language via the selector at the bottom left of the sidebar or in Settings > My Profile." },
+                { q: "How do user roles work?", a: "The Owner has all rights. The Manager manages teams and schedules but cannot see billing. The Accountant has read-only access to reports." }
+            ],
+            planning: [
+                { q: "How to publish a schedule?", a: "Once shifts are created, they are in 'Draft' mode (striped). Click the 'Publish' button top right to make them visible to employees and send notifications." },
+                { q: "Can I copy a typical week?", a: "Absolutely. Use the 'Copy' button in the planning toolbar. You can duplicate the current week to multiple future weeks at once." },
+                { q: "What are templates used for?", a: "Templates allow you to create recurring shifts (e.g., 'Morning 8am-4pm'). Drag and drop a template onto the calendar to create a shift instantly." }
+            ],
+            tracking: [
+                { q: "What is an anomaly?", a: "An anomaly is detected when an employee clocked in but forgot to clock out the previous day. You must manually fix it in 'Time Entries'." },
+                { q: "How to add a forgotten clock-in?", a: "Go to 'Time Entries' > 'Logs', then click 'Manual Entry'. Select the employee, date, and in/out times." },
+                { q: "How to validate hours for payroll?", a: "In 'Time Entries', use the 'Validate Period' button. This locks the data to prevent further modification and ensures payroll integrity." }
+            ],
+            employees: [
+                { q: "How to invite an employee?", a: "Go to 'Team' and click 'New Employee'. Fill in their info. If they have a WhatsApp number, they will receive their access directly." },
+                { q: "What is the PIN code for?", a: "The PIN code is unique to each employee. It is what they must enter on the tablet (Kiosk) to clock in and out." },
+                { q: "How to archive an employee?", a: "In the employee card, click 'Archive'. Historical data is kept, but they can no longer clock in and won't appear in active filters." }
+            ],
+            kiosks: [
+                { q: "Does offline mode work?", a: "Yes! Tablets record clock-ins even without internet. They will automatically sync as soon as the connection is restored." },
+                { q: "How to pair a new tablet?", a: "Install the Kiosk app on the tablet. It will show a code. In your admin, go to 'Terminals' > 'New Kiosk' and enter this code." },
+                { q: "Is the photo mandatory?", a: "You can configure this per terminal. It's useful to prevent 'buddy punching' (clocking in for a colleague)." }
+            ],
+            billing: [
+                { q: "What are the payment methods?", a: "We accept credit cards and mobile money (Airtel Money, Moov Money) via our payment partner." },
+                { q: "Where can I find my invoices?", a: "Your invoices are available and downloadable in PDF format in the Settings > Subscription section." }
+            ]
         }
+    },
+    updatePassword: {
+        title: "New Password",
+        desc: "Enter your new secure password.",
+        newPassword: "New Password",
+        confirmPassword: "Confirm Password",
+        submit: "Update Password",
+        successTitle: "Password Updated!",
+        successDesc: "You will be redirected to the login page...",
+        goToLogin: "Go to Login",
+        errors: {
+            length: "Password must be at least 6 characters.",
+            match: "Passwords do not match.",
+            default: "An error occurred.",
+        }
+    },
+    systemLogs: {
+        title: "System Logs",
+        desc: "View the history of actions performed on the application.",
+        table: {
+            action: "Action",
+            user: "User",
+            details: "Details",
+            date: "Date",
+            level: "Level"
+        },
+        levels: {
+            INFO: "Info",
+            WARN: "Warning",
+            ERROR: "Error"
+        },
+        empty: "No logs found.",
+        export: "Export to JSON",
+        searchPlaceholder: "Search by action, user...",
+        viewDetails: "View Details",
+        hideDetails: "Hide Details"
+    },
+    settings: {
+        title: "Settings",
+        desc: "Manage your company, team, and preferences.",
+        tabs: {
+            general: "General",
+            team: "Team",
+            notifications: "Notifications",
+            billing: "Billing",
+            integrations: "Integrations",
+            logs: "System Logs",
+            profile: "My Profile"
+        },
+        general: {
+            companyInfo: "Company Information",
+            save: "Save",
+            saving: "Saving...",
+            saved: "Saved!",
+            logo: "Company Logo",
+            uploadLogo: "Upload Logo",
+            logoDesc: "JPG, PNG or SVG. Max 2MB. Will appear on your tablets.",
+            companyName: "Company Name",
+            industry: "Industry",
+            currency: "Currency",
+            timezone: "Timezone",
+            payrollRules: "Payroll Rules",
+            payrollCycle: "Payroll Cycle",
+            exportFormat: "Default Export Format",
+            attendanceRules: "Attendance Rules (Anti-Conflict)",
+            latenessTolerance: "Lateness Tolerance",
+            latenessDesc: "Threshold before marking as 'Late'.",
+            roundingRule: "Rounding Rule",
+            roundingDesc: "For overtime calculation.",
+            autoLunch: "Auto Lunch Break",
+            autoLunchDesc: "Automatically deduct break time",
+            ifDay: "if day >",
+            scheduleSettings: "Schedule Settings",
+            stdDayDuration: "Standard Day Duration",
+            hours: "hours",
+            startOfWeek: "Start of Week",
+            startTime: "Start Time (Arrival)",
+            endTime: "End Time (Departure)",
+            workingDays: "Company Working Days",
+            workingDaysDesc: "Unchecked days will be considered as overtime.",
+            nightHours: "Night Hours (Premium)",
+            from: "From",
+            to: "To",
+            sector: {
+                btp: "Construction",
+                restauration: "Restaurant / Hotel",
+                retail: "Retail",
+                health: "Health / Medical",
+                logistics: "Logistics / Transport",
+                services: "Services",
+                other: "Other"
+            },
+            payrollCycles: {
+                monthly: "1st to 30/31 (Calendar Month)",
+                midMonth: "15th to 15th",
+                weekly: "Weekly",
+                biweekly: "Bi-weekly"
+            },
+            latenessTolerances: {
+                none: "None (Strict)",
+                min5: "5 minutes",
+                min10: "10 minutes",
+                min15: "15 minutes"
+            },
+            roundingRules: {
+                exact: "Exact minute",
+                quarter: "Quarter hour (15 min)",
+                half: "Half hour (30 min)"
+            },
+            weekDays: {
+                monday: "Monday",
+                sunday: "Sunday"
+            },
+            shortWeekDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            lunchDuration: {
+                min30: "30 min",
+                min45: "45 min",
+
+                hour1: "1 hour",
+                min90: "1h30"
+            },
+            export: {
+                xlsx: "Excel (.xlsx)",
+                csv: "CSV (.csv)",
+                pdf: "PDF (.pdf)"
+            },
+            rounding: {
+                exact: "Exact minute",
+                min5: "5 minutes",
+                min15: "15 minutes",
+                min30: "30 minutes"
+            },
+            break: {
+                min30: "30 min",
+                min45: "45 min",
+                min60: "1 hour",
+                min90: "1h30"
+            },
+            week: {
+                monday: "Monday",
+                sunday: "Sunday",
+                saturday: "Saturday"
+            },
+            alert: {
+                min15: "15 minutes",
+                min30: "30 minutes",
+                min60: "1 hour",
+                min120: "2 hours"
+            }
+        },
+        team: {
+            title: "User Management",
+            desc: "Manage access to your Timmy dashboard.",
+            invite: "Invite Member",
+            table: {
+                user: "User",
+                role: "Role",
+                status: "Status",
+                actions: "Actions",
+                you: "You",
+                active: "Active",
+                invited: "Invited"
+            },
+            roles: {
+                owner: "Owner",
+                manager: "Manager",
+                accountant: "Accountant",
+                infoTitle: "💡 About Roles",
+                ownerDesc: "Full access, including billing and deletion.",
+                managerDesc: "Manage teams and schedules. No billing access.",
+                accountantDesc: "Read-only access to payroll reports and exports."
+            },
+            inviteModal: {
+                title: "Invite Member",
+                email: "Email Address",
+                role: "Role",
+                cancel: "Cancel",
+                send: "Send Invitation",
+                sending: "Sending...",
+                sent: "Sent!"
+            }
+        },
+        notifications: {
+            title: "Notification Center",
+            channels: "Communication Channels",
+            emailDesc: "For reports and admin alerts",
+            whatsappDesc: "For urgent alerts and employees",
+            operationalAlerts: "Operational Alerts (Emergencies)",
+            lateAlert: "When an employee is > 15 min late",
+            absentAlert: "When an employee is absent > 30 min after shift start",
+            earlyAlert: "When an employee leaves before shift end (Early Departure)",
+            technicalAlerts: "Technical & System Alerts",
+            critical: "Critical",
+            syncAlert: "Alert me if a kiosk hasn't synced for more than 1 hour",
+            reports: "Reports & Summaries",
+            dailyReport: "Daily report by email at 08:00",
+            weeklyReport: "Weekly Summary (Sunday evening)",
+            employeeAlerts: "Employee Alerts (What THEY receive)",
+            scheduleAlert: "Receive my schedule on Sunday evening (WhatsApp)",
+            shiftReminder: "Reminder 1h before my shift",
+            whatsappConsent: "WhatsApp messages are only sent to employees who have consented via their profile."
+        },
+        billing: {
+            title: "My Subscription",
+            subtitle: "Manage your plan, invoices, and payment methods.",
+            active: "ACTIVE",
+            activePlan: "Active Plan",
+            currentPlan: "Your current plan",
+            monthly: "Monthly",
+            annual: "Annual",
+            annualDiscount: "-20%",
+            renewalDate: "Renewal on {date}",
+            currencyPerMonth: "FCFA / month",
+            perActiveEmployee: "Per active employee.",
+            usageTitle: "Current usage",
+            activeEmployees: "Active employees",
+            connectedKiosks: "Connected kiosks",
+            locationsCount: "Number of locations",
+            needMore: "Need more?",
+            upgradePrompt: "Upgrade to Unlimited Plan",
+            nextPayment: "Next payment",
+            renewalDesc: "Your annual subscription will be automatically renewed. You'll receive a notification 7 days before.",
+            changePlan: "Change plan",
+            modalTitle: "Take your management to the next level",
+            modalSubtitle: "Change plans at any time. Billing will be adjusted pro-rata for remaining days.",
+            planStarter: {
+                name: "Starter",
+                price: "Free",
+                desc: "To test the application.",
+                features: ["10 employees max", "1 Kiosk", "Basic tracking"],
+                action: "Switch to Starter"
+            },
+            planPro: {
+                name: "Pro",
+                features: ["Unlimited employees", "Offline Mode", "GPS & Photo anti-fraud", "Payroll Exports (Excel)"]
+            },
+            planEnterprise: {
+                name: "Enterprise",
+                price: "Quote based",
+                desc: "Centralized billing & volume.",
+                recommended: "Recommended",
+                featuresTitle: "Everything in Pro, plus:",
+                features: [
+                    "Advanced Security (SSO, Audit Logs)",
+                    "Custom API & Integrations (ERP)",
+                    "Dedicated Account Manager 24/7",
+                    "Free onsite training"
+                ],
+                action: "Contact to Upgrade",
+                responseTime: "Guaranteed response within 2 business hours."
+            },
+            securePayment: "SSL Secure Payment",
+            needHelp: "Need help?",
+            invoiceHistory: "Invoice history",
+            viewAll: "View all",
+            table: {
+                date: "Date",
+                reference: "Reference",
+                amount: "Amount",
+                status: "Status",
+                action: "Action"
+            },
+            status: {
+                paid: "Paid",
+                pending: "Pending",
+                validation: "Validation",
+                today: "Today"
+            },
+            paymentMethod: "Payment method",
+            default: "Default",
+            manualPayment: "Manual payment",
+            declarePayment: "Declare a payment",
+            addMethod: "Add a method",
+            billingDetails: "Billing details",
+            emailDesc: "Invoices will be sent to this address.",
+            nif: "NIF",
+            rccm: "RCCM",
+            billingEmail: "Billing email",
+            airtelModal: {
+                title: "Airtel Money Payment",
+                instructions: "Payment instructions:",
+                sendTo: "Send the amount to:",
+                name: "(Name: Timmy SAS)",
+                step2: "Wait for the confirmation SMS with the transaction ID.",
+                step3: "Fill in the form below for validation.",
+                transactionId: "Transaction ID",
+                idDesc: "The ID is found in the Airtel confirmation SMS.",
+                proof: "Proof of payment",
+                uploadDesc: "Click to add a screenshot",
+                uploadLimit: "PNG, JPG up to 5MB",
+                confirm: "Confirm payment",
+                validating: "Validating..."
+            },
+            editModal: {
+                title: "Billing information",
+                companyName: "Company name",
+                address: "Address",
+                city: "City & Country",
+                saving: "Saving...",
+                save: "Save changes"
+            },
+            toasts: {
+                paymentSuccess: "Payment successfully declared. Validation pending.",
+                billingUpdated: "Billing information updated",
+                planEnterpriseSent: "Your request for the Enterprise plan has been sent. An advisor will contact you."
+            }
+        },
+        integrations: {
+            title: "Integrations",
+            subtitle: "Connect Timmy to your favorite payroll, HR, and communication tools.",
+            searchPlaceholder: "Search for an integration (e.g. Sage, Excel...)",
+            categories: {
+                all: "All",
+                communication: "Communication",
+                productivity: "Productivity",
+                finance: "Finance",
+                developer: "Developer"
+            },
+            status: {
+                active: "Active",
+                inactive: "Inactive",
+                alwaysActive: "Always active",
+                comingSoon: "Coming soon"
+            },
+            actions: {
+                configure: "Configure",
+                learnMore: "Learn more"
+            },
+            missingTool: {
+                title: "Missing a tool?",
+                desc: "Tell us what software you use, we'll add it to the roadmap.",
+                action: "Suggest an integration"
+            },
+            api: {
+                title: "Developer API Access",
+                desc: "Have an internal IT team? Use our secure REST API to build your own connectors and extract raw data in real-time.",
+                docs: "Documentation",
+                generateKey: "Generate an API Key"
+            },
+            whatsapp: {
+                title: "WhatsApp Business",
+                desc: "The #1 channel. Automatically send shifts and alerts directly to workers' mobiles.",
+                quota: "Message Quota",
+                quality: "Line Quality",
+                excellent: "Excellent"
+            },
+            googleSheets: {
+                title: "Google Sheets",
+                desc: "Sync your attendance in real-time to a Google Sheets sheet.",
+                activeTitle: "Active sync",
+                lastExport: "Last export: {time}",
+                viewSheet: "View sheet"
+            },
+            sage: {
+                title: "Sage Payroll",
+                desc: "The accounting standard. Native export of hours to Sage 100c and Sage Business Cloud.",
+                version: "Version",
+                lastExport: "Last export"
+            },
+            excel: {
+                title: "Excel / CSV",
+                desc: "The universal one. Formatted exports for analysis or import into any third-party system."
+            },
+            outlook: {
+                title: "Outlook Calendar",
+                desc: "Display production schedules directly in Microsoft 365 Outlook calendars.",
+                syncActive: "Active bi-directional sync"
+            },
+            googleDrive: {
+                title: "Google Drive",
+                desc: "Legal and automatic archiving of photo evidence and signed timesheets.",
+                connectedTo: "Connected to \"{name}\"",
+                syncCount: "{count} files synced this week."
+            },
+            sms: {
+                title: "SMS Gateway",
+                desc: "SMS alerts (Infobip/Twilio) to reach 100% of employees, even without smartphones.",
+                balance: "SMS Balance"
+            },
+            mobileMoneyExports: {
+                title: "Mobile Money Exports",
+                desc: "Generate bulk payment files compatible with Airtel & Moov portals."
+            },
+            cegid: {
+                title: "Cegid XRP",
+                desc: "Employee ID synchronization and payroll variables import for large structures."
+            },
+            odoo: {
+                title: "Odoo HR",
+                desc: "Bi-directional connector for the Odoo Human Resources module."
+            },
+            powerbi: {
+                title: "Power BI",
+                desc: "Advanced analytical dashboards for a 360 view of your payroll."
+            },
+            teams: {
+                title: "Microsoft Teams",
+                desc: "Late and departure notifications directly in your Teams channels."
+            }
+        },
+        profile: {
+            title: "My Profile",
+            firstName: "First Name",
+            lastName: "Last Name",
+            email: "Email",
+            phone: "Phone Number",
+            security: "Security",
+            newPassword: "New Password",
+            confirmPassword: "Confirm Password",
+            enable2FA: "Enable Two-Factor Authentication (2FA)",
+            preferences: "Preferences",
+            language: "Language",
+            languageDesc: "Used for your dashboard and notifications."
+        }
+    },
+    sites: {
+        title: "Sites & Locations",
+        desc: "Manage your work locations and offices.",
+        newSite: "New Site",
+        active: "Active",
+        archived: "Archived",
+        noActive: "No active sites",
+        noArchived: "No archived sites",
+        startAdding: "Start by adding your first location.",
+        archivedDesc: "Archived sites will appear here.",
+        createSite: "Create a site",
+        createCard: "Create a new site",
+        edit: "Edit",
+        archive: "Archive",
+        restore: "Restore",
+        viewSchedule: "View schedule for this site",
+        offline: "Offline",
+        noAddress: "No address provided",
+        modal: {
+            newTitle: "New Location",
+            editTitle: "Edit Site",
+            name: "Site Name",
+            namePlaceholder: "Ex: Head Office, Site A...",
+            city: "City",
+            cityPlaceholder: "Ex: Libreville",
+            address: "Address / Directions",
+            addressPlaceholder: "Ex: Louis District, blue gate...",
+            timezone: "Timezone",
+            geofencing: "Geofencing",
+            disabled: "Disabled",
+            soon: "SOON",
+            cancel: "Cancel",
+            create: "Create Site",
+            update: "Update",
+            saving: "Saving..."
+        },
+        confirm: {
+            archiveTitle: "Archive Site",
+            restoreTitle: "Restore Site",
+            archiveMsg: "Are you sure you want to archive \"{name}\"? It will no longer be accessible for clock-ins.",
+            restoreMsg: "Are you sure you want to restore \"{name}\"?",
+            cancel: "Cancel",
+            confirm: "Confirm"
+        },
+        toast: {
+            fetchError: "Failed to fetch sites",
+            archiveSuccess: "Site archived successfully",
+            restoreSuccess: "Site restored successfully",
+            statusError: "Failed to update site status",
+            updateSuccess: "Site updated successfully",
+            createSuccess: "Site created successfully",
+            saveError: "Failed to save site"
+        }
+    },
+    kiosks: {
+        title: "Kiosks & Terminals",
+        desc: "Manage your tablets and clock-in stations.",
+        newKiosk: "New Kiosk",
+        noKiosks: "No kiosks configured",
+        startAdding: "Add your first tablet to start clocking in.",
+        createKiosk: "Add Kiosk",
+        status: {
+            ONLINE: "Online",
+            OFFLINE: "Offline",
+            PENDING: "Pending",
+            REVOKED: "Revoked"
+        },
+        table: {
+            name: "Name",
+            site: "Site",
+            status: "Status",
+            version: "Version",
+            lastSync: "Last Sync",
+            pairingCode: "Pairing Code"
+        },
+        modal: {
+            newTitle: "New Kiosk",
+            editTitle: "Edit Kiosk",
+            name: "Kiosk Name",
+            namePlaceholder: "Ex: Main Entrance Tablet",
+            site: "Assigned Site",
+            sitePlaceholder: "Select a site",
+            security: "Security & Options",
+            requirePhoto: "Require Photo",
+            requireBadge: "Require NFC Badge",
+            requireSignature: "Require Signature",
+            cancel: "Cancel",
+            create: "Create Kiosk",
+            update: "Update",
+            saving: "Saving..."
+        },
+        toast: {
+            fetchError: "Error loading kiosks",
+            createSuccess: "Kiosk created successfully",
+            updateSuccess: "Kiosk updated successfully",
+            deleteSuccess: "Kiosk deleted",
+            error: "An error occurred"
+        },
+        confirm: {
+            deleteTitle: "Delete Kiosk",
+            deleteMsg: "Are you sure you want to delete this kiosk? This action cannot be undone.",
+            cancel: "Cancel",
+            confirm: "Delete"
+        }
+    },
+    employees: {
+        title: "Team",
+        desc: "Manage your employees, daily workers, and their access.",
+        import: "Import Excel / CSV",
+        newEmployee: "New Employee",
+        searchPlaceholder: "Search employee by name or job title...",
+        allSites: "All sites",
+        active: "Active",
+        archived: "Archived",
+        noEmployees: "No employees found",
+        noEmployeesDesc: "Try changing your filters or add a new member.",
+        card: {
+            archived: "Archived",
+            unassigned: "Unassigned",
+            pinCode: "PIN Code",
+            whatsapp: "WhatsApp",
+            verified: "Verified",
+            sendVerification: "Send Verification Message",
+            unverify: "Click to unverify",
+            verifyManually: "Click to verify manually",
+            noPhone: "No phone",
+            edit: "Edit",
+            badge: "Badge PDF",
+            archive: "Archive",
+            unarchive: "Unarchive"
+        },
+        form: {
+            createTitle: "Create Employee",
+            editTitle: "Edit Employee",
+            personalInfo: "Personal Info",
+            firstName: "First Name",
+            lastName: "Last Name",
+            jobTitle: "Job Title / Role",
+            jobPlaceholder: "Ex: Mason, Server...",
+            contact: "Contact",
+            whatsapp: "WhatsApp",
+            email: "Email (Optional)",
+            access: "Access & Security",
+            assignedSite: "Assigned Site",
+            unassigned: "-- Unassigned --",
+            pinCode: "PIN Code (Access)",
+            pinDesc: "Used to clock in on the tablet.",
+            cancel: "Cancel",
+            save: "Save"
+        },
+
+        importModal: {
+            title: "Import Employees",
+            important: "Important",
+            importantDesc: "For the import to work correctly, please use our predefined template.",
+            downloadTemplate: "Download Excel Template",
+            templateDesc: "Format .xlsx - First Name, Last Name, Job Title...",
+            then: "Then",
+            dragDrop: "Drag your file here",
+            browse: "or click to browse",
+            mapColumns: "Map Columns",
+            mapDesc: "Please match the columns from your file to the employee fields.",
+            selectColumn: "-- Select Column --",
+            back: "Back",
+            next: "Next",
+            fileDetected: "File detected",
+            analysis: "Analysis Summary",
+            linesDetected: "lines detected.",
+            newEmployees: "New employees",
+            readyImport: "Ready to import",
+            duplicates: "Duplicates detected",
+            willIgnore: "Will be ignored",
+            hasPin: "already have a PIN code.",
+            autoPin: "will receive an automatic code.",
+            importBtn: "Import {count} employees",
+            successTitle: "Import Successful!",
+            successDesc: "employees have been added to your team.",
+            close: "Close"
+        },
+        badge: {
+            title: "Employee Badge",
+            print: "Print Badge",
+            cancel: "Cancel",
+            role: "Employee",
+            accessBadge: "Personal Access Badge"
+        },
+        toast: {
+            archiveConfirm: "Archive this employee? They will no longer be able to clock in.",
+            unarchiveConfirm: "Unarchive this employee?",
+            archiveError: "Error updating archive status",
+            verifyError: "Error updating verification",
+            verified: "WhatsApp verified manually",
+            unverified: "WhatsApp unverified",
+            orgNotFound: "Organization ID not found",
+            updateError: "Error updating employee",
+            updateSuccess: "Employee updated successfully",
+            createError: "Error creating employee",
+            createSuccess: "Employee created successfully",
+            importError: "Import error for row",
+            importFailed: "Import failed",
+            genericError: "An error occurred"
+        }
+    },
+    planning: {
+        title: "Weekly Schedule",
+        subtitle: "Manage your team's shifts.",
+        publishBtn: "Publish",
+        printBtn: "Print",
+        copyBtn: "Copy",
+        today: "Today",
+        employees: "Employees",
+        unassigned: "Open Shifts",
+        dragHelp: "Drag to assign",
+        addShift: "Add shift",
+        generatedOn: "Generated on",
+        managerSig: "Manager Signature",
+        siteManagerSig: "Site Manager Signature",
+        templates: "Templates",
+        templatesHint: "Drag and drop to create",
+        headerTotal: "Total",
+        filters: {
+            search: "Search employee...",
+            allSites: "All sites",
+        },
+        tooltips: {
+            quickFill: "Auto-Fill (Mon-Fri 8am-5pm)",
+            addOpenShift: "Add Open Shift"
+        },
+        modal: {
+            publishTitle: "Publish Schedule 🚀",
+            confirmPublishTitle: "Confirm Publication?",
+            confirmPublishDesc: "You are about to publish",
+            shiftsDraft: "shifts",
+            currentlyDraft: "currently in draft.",
+            willNotify: "Affected employees will be notified.",
+            channels: {
+                email: "Email",
+                emailDesc: "Send schedules via email",
+                whatsapp: "WhatsApp / SMS",
+                whatsappDesc: "Instant mobile notification"
+            },
+            cancel: "Cancel",
+            confirm: "Publish",
+            sending: "Sending...",
+            success: "Published!",
+
+            // Copy
+            copyTitle: "Copy Week",
+            source: "Source",
+            destination: "Destination(s)",
+            currentWeek: "Current Week",
+            selectWeeks: "Select weeks to duplicate this schedule to.",
+            copyAction: "Copy to {count} weeks",
+            copySimple: "Copy",
+            copied: "Copied!",
+
+            // Shift
+            newShiftTitle: "New Shift ✨",
+            editShiftTitle: "Edit Shift",
+            start: "Start",
+            end: "End",
+            break: "Break (minutes)",
+            site: "Site",
+            sitePlaceholder: "Select a site...",
+            note: "Note (Optional)",
+            notePlaceholder: "Instructions, tasks...",
+            add: "Add",
+            create: "Create Shift",
+            update: "Update",
+            delete: "Delete",
+            confirmDelete: "Are you sure you want to delete this shift?"
+        },
+        toast: {
+            publishSuccess: "Schedule published successfully! 🚀",
+            publishError: "Publish failed.",
+            addSuccess: "Shift added!",
+            addError: "Error adding shift.",
+            updateSuccess: "Shift updated",
+            deleteSuccess: "Shift deleted",
+            deleteError: "Delete failed",
+            moveError: "Move failed.",
+            copySuccess: "{count} shifts copied successfully",
+            copyError: "Copy failed",
+            magicFillSuccess: "Magic! Added {count} shifts ✨",
+            magicFillEmpty: "Nothing to fill (Mon-Fri full)",
+            noSite: "No sites available",
+            templateApplied: "Template applied ✨"
+        }
+    },
+    referral: {
+        title: "Referral",
+        header: "Grow with us ❤️",
+        heroTitle: "Give 1 month, Get 1 month.",
+        heroDesc: "Invite other companies to join Timmy. For every company that signs up with your link, you both get 1 month of free subscription (Pro Plan).",
+        linkTitle: "Your unique link",
+        copyLink: "Copy Link",
+        copied: "Copied!",
+        shareTitle: "Quick Share",
+        shareLinkedin: "Share on LinkedIn",
+        shareEmail: "Send via Email",
+        emailSubject: "Invitation to discover Timmy 🚀",
+        emailBody: "Hey, I use Timmy to manage my team and shifts. It's a game changer. Here is my link to get 1 month free:",
+        statsTitle: "Your Referrals",
+        totalReferred: "Referred Companies",
+        pending: "Pending",
+        earned: "Earned Credit",
+        emptyState: "No referrals yet. Share your link!"
     }
 };

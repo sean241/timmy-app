@@ -409,11 +409,11 @@ export default function DashboardPage() {
             {/* --- HEADER --- */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Bonjour, {userName} 👋</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">{t.dashboard?.greeting.replace('{name}', userName)}</h1>
                     <p className="text-gray-500">
                         {stats.siteStats && stats.siteStats.length > 0
-                            ? "Voici ce qui se passe sur vos sites aujourd'hui."
-                            : "Tout est calme pour le moment."}
+                            ? t.dashboard?.subtitleActivity
+                            : t.dashboard?.subtitleQuiet}
                     </p>
                 </div>
 
@@ -578,7 +578,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                            En Direct (Live Feed)
+                            {t.dashboard?.liveFeed}
                         </h2>
                         {feed.length > 0 && <span className="text-xs text-gray-400">Dernière maj: {new Date().toLocaleTimeString()}</span>}
                     </div>
@@ -623,11 +623,11 @@ export default function DashboardPage() {
                                                     : 'bg-emerald-50 text-emerald-700 border-emerald-200' // On Time
                                                     }`}>
                                                     {item.status === 'late' ? <AlertTriangle size={14} /> : <CheckCircle size={14} />}
-                                                    {item.status === 'late' ? `Retard ${item.delay}` : 'À l\'heure'}
+                                                    {item.status === 'late' ? `${t.dashboard?.lateTag} ${item.delay}` : t.dashboard?.onTime}
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-1 text-gray-500 text-sm font-bold bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
-                                                    <ArrowRight size={14} /> Départ
+                                                    <ArrowRight size={14} /> {t.dashboard?.departure}
                                                 </div>
                                             )}
                                         </div>
@@ -640,7 +640,7 @@ export default function DashboardPage() {
 
                 {/* --- ZONE 3: ACTIONS / STATUS --- */}
                 <div className="space-y-4">
-                    <h2 className="text-lg font-bold text-gray-900">Alertes & Statuts</h2>
+                    <h2 className="text-lg font-bold text-gray-900">{t.dashboard?.alertsTitle}</h2>
 
                     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden divide-y divide-gray-100">
                         {stats.alerts?.map((alert, idx) => (
@@ -672,23 +672,23 @@ export default function DashboardPage() {
                     {/* Raccourcis */}
                     <div className="flex flex-wrap gap-2">
                         <button onClick={() => router.push('/admin/planning')} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:text-[#0F4C5C] hover:border-[#0F4C5C] transition-all">
-                            <Clock size={12} /> Planning
+                            <Clock size={12} /> {t.dashboard?.planningBtn}
                         </button>
                         <button onClick={() => router.push('/admin/time-entries')} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:text-[#0F4C5C] hover:border-[#0F4C5C] transition-all">
-                            <FileText size={12} /> Pointages
+                            <FileText size={12} /> {t.dashboard?.entriesBtn}
                         </button>
                         <button onClick={() => router.push('/admin/employees')} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:text-[#0F4C5C] hover:border-[#0F4C5C] transition-all">
-                            <Users size={12} /> Staff
+                            <Users size={12} /> {t.dashboard?.staffBtn}
                         </button>
                     </div>
 
                     {/* Support Card */}
                     <div className="bg-[#0F4C5C] rounded-xl p-5 text-white shadow-lg relative overflow-hidden group cursor-pointer mt-4">
                         <div className="relative z-10">
-                            <h3 className="font-bold text-lg mb-1">Besoin d'aide ?</h3>
-                            <p className="text-blue-100 text-sm mb-4">Contactez notre support dédié.</p>
+                            <h3 className="font-bold text-lg mb-1">{t.dashboard?.helpTitle}</h3>
+                            <p className="text-blue-100 text-sm mb-4">{t.dashboard?.helpDesc}</p>
                             <button className="bg-white text-[#0F4C5C] px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 transition-colors">
-                                Support WhatsApp
+                                {t.dashboard?.helpBtn}
                             </button>
                         </div>
                         <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4 group-hover:scale-110 transition-transform">

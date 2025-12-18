@@ -185,8 +185,8 @@ export default function IntegrationSettings({ organizationId }: { organizationId
         },
         {
             id: 'cegid_xrp',
-            title: 'Cegid XRP',
-            desc: 'Synchronisation des matricules et import des variables de paie pour les grandes structures.',
+            title: t.settings.integrations.cegid.title,
+            desc: t.settings.integrations.cegid.desc,
             icon: Calculator,
             category: 'finance',
             enabled: false,
@@ -196,8 +196,8 @@ export default function IntegrationSettings({ organizationId }: { organizationId
         },
         {
             id: 'odoo_rh',
-            title: 'Odoo RH',
-            desc: "Connecteur bidirectionnel pour le module Ressources Humaines d'Odoo.",
+            title: t.settings.integrations.odoo.title,
+            desc: t.settings.integrations.odoo.desc,
             icon: Briefcase,
             category: 'productivity',
             enabled: false,
@@ -228,8 +228,8 @@ export default function IntegrationSettings({ organizationId }: { organizationId
         },
         {
             id: 'power_bi',
-            title: 'Power BI',
-            desc: 'Tableaux de bord décisionnels connectés en direct pour la Direction Générale.',
+            title: t.settings.integrations.powerbi.title,
+            desc: t.settings.integrations.powerbi.desc,
             icon: BarChart3,
             category: 'productivity',
             enabled: false,
@@ -258,8 +258,8 @@ export default function IntegrationSettings({ organizationId }: { organizationId
         },
         {
             id: 'microsoft_teams',
-            title: 'Microsoft Teams',
-            desc: 'Notifications administratives pour les équipes RH et Managers au bureau.',
+            title: t.settings.integrations.teams.title,
+            desc: t.settings.integrations.teams.desc,
             icon: Briefcase,
             category: 'communication',
             enabled: false,

@@ -41,25 +41,52 @@ export async function pushKioskLogs(logs: KioskLog[]) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // In a real app, we would upload photos to Storage here
-    // For now, we'll strip the base64 photo to avoid payload issues if the DB column isn't text/large
-    // or we assume the DB can handle it (not recommended for production)
-    // Let's assume we just save the metadata for now to prove the sync works
+    const processedLogs = [];
 
-    const logsToInsert = logs.map(log => ({
-        employee_id: log.employee_id,
-        organization_id: log.organization_id,
-        site_id: log.site_id,
-        kiosk_id: log.kiosk_id,
-        type: log.type === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
-        timestamp: log.timestamp,
-        // photo_url: ... upload logic would go here
-        created_at: new Date().toISOString()
-    }))
+    for (const log of logs) {
+        let photoPath = null;
+
+        // If a photo is provided in base64, upload it to Storage
+        if (log.photo && log.photo.startsWith('data:image')) {
+            try {
+                const base64Data = log.photo.split(',')[1];
+                const buffer = Buffer.from(base64Data, 'base64');
+                const fileExt = 'jpg';
+                const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`;
+                const filePath = `proofs/${log.organization_id}/${log.employee_id}/${fileName}`;
+
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('secure-logs')
+                    .upload(filePath, buffer, {
+                        contentType: 'image/jpeg',
+                        upsert: true
+                    });
+
+                if (uploadError) {
+                    console.error('Error uploading log photo:', uploadError);
+                } else {
+                    photoPath = uploadData.path;
+                }
+            } catch (err) {
+                console.error('Failed to process photo for log:', err);
+            }
+        }
+
+        processedLogs.push({
+            employee_id: log.employee_id,
+            organization_id: log.organization_id,
+            site_id: log.site_id,
+            kiosk_id: log.kiosk_id,
+            type: log.type === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
+            timestamp: log.timestamp,
+            photo: photoPath, // Store the path to the private bucket
+            created_at: new Date().toISOString()
+        });
+    }
 
     const { data, error } = await supabase
         .from('attendance_logs')
-        .insert(logsToInsert)
+        .insert(processedLogs)
         .select()
 
     if (error) {
@@ -68,10 +95,8 @@ export async function pushKioskLogs(logs: KioskLog[]) {
     }
 
     // Try to update heartbeat using the last kiosk_id found in the batch
-    const uniqueKioskIds = Array.from(new Set(logsToInsert.map(l => l.kiosk_id).filter(id => !!id))) as string[]
-    // We update all unique kiosks involved (usually just one)
+    const uniqueKioskIds = Array.from(new Set(processedLogs.map(l => l.kiosk_id).filter(id => !!id))) as string[]
     for (const kid of uniqueKioskIds) {
-        // Run in background / parallel
         updateKioskHeartbeat(kid).catch(e => console.error("Heartbeat update failed during push logs", e))
     }
 

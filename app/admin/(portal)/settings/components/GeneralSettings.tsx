@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { CheckCircle, Save, Loader2, Building2, Upload } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { uploadFile, BUCKETS } from "@/lib/storage";
 import { useLanguage } from "@/app/context/LanguageContext";
 import Toast from "@/components/Toast";
 import { OrganizationSettings } from "@/types/settings";
@@ -95,27 +96,21 @@ export default function GeneralSettings({ organizationId }: { organizationId: st
 
         try {
             const fileExt = file.name.split('.').pop();
-            const fileName = `org-logo-${organizationId}-${Math.random()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            const fileName = `logo-${organizationId}-${Date.now()}.${fileExt}`;
+            const filePath = `logos/${organizationId}/${fileName}`;
 
-            // 1. Upload to Supabase Storage (using 'avatars' bucket as it is public)
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file);
+            const { url, error: uploadError } = await uploadFile(
+                BUCKETS.PUBLIC_ASSETS,
+                filePath,
+                file
+            );
 
-            if (uploadError) {
-                throw uploadError;
-            }
-
-            // 2. Get Public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath);
+            if (uploadError) throw uploadError;
 
             // 3. Update State
             setSettings(prev => ({
                 ...prev,
-                general: { ...prev.general, logo_url: publicUrl }
+                general: { ...prev.general, logo_url: url || "" }
             }));
 
             setToast({ message: "Logo ajouté avec succès", type: "success" });
