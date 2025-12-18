@@ -548,97 +548,185 @@ export const translations = {
                 whatsappConsent: "Les messages WhatsApp ne sont envoyés qu'aux employés ayant consenti via leur profil."
             },
             billing: {
-                title: "Abonnement & Facturation",
+                title: "Mon Abonnement",
+                subtitle: "Gérez votre offre, vos factures et vos moyens de paiement.",
                 active: "ACTIF",
-                monthly: "Facturation mensuelle • Prochain paiement le 15 Jan",
-                month: "/mois",
-                employeeUsage: "Utilisation Employés",
-                upgradePrompt: "Besoin de plus ?",
-                upgradeLink: "Passez au plan Illimité",
-                paymentMethod: "Moyen de Paiement",
-                edit: "Modifier",
-                expires: "Expire le",
-                altPayment: "Paiement Alternatif",
-                mobileMoneyBtn: "Payer via Mobile Money / Virement",
-                billingDetails: "Détails de Facturation",
-                invoiceHistory: "Historique des Factures",
+                activePlan: "Plan Actif",
+                currentPlan: "Votre plan actuel",
+                monthly: "Mensuel",
+                annual: "Annuel",
+                annualDiscount: "-20%",
+                renewalDate: "Renouvellement le {date}",
+                currencyPerMonth: "FCFA / mois",
+                perActiveEmployee: "Par employé actif.",
+                usageTitle: "Utilisation actuelle",
+                activeEmployees: "Employés actifs",
+                connectedKiosks: "Bornes connectées",
+                locationsCount: "Nombre d'emplacements",
+                needMore: "Besoin de plus ?",
+                upgradePrompt: "Passez au plan Illimité",
+                nextPayment: "Prochain prélèvement",
+                renewalDesc: "Votre abonnement annuel sera renouvelé automatiquement. Vous recevrez une notification 7 jours avant.",
+                changePlan: "Changer d'offre",
+                modalTitle: "Faites passer votre gestion au niveau supérieur",
+                modalSubtitle: "Changez de forfait à tout moment. La facturation sera ajustée au prorata des jours restants.",
+                planStarter: {
+                    name: "Starter",
+                    price: "Gratuit",
+                    desc: "Pour tester l'application.",
+                    features: ["10 employés max", "1 Borne", "Pointage basique"],
+                    action: "Passer en Starter"
+                },
+                planPro: {
+                    name: "Pro",
+                    features: ["Employés illimités", "Mode Hors-Ligne", "Anti-fraude GPS & Photo", "Exports Paie (Excel)"]
+                },
+                planEnterprise: {
+                    name: "Entreprise",
+                    price: "Sur Devis",
+                    desc: "Facturation centralisée & volume.",
+                    recommended: "Recommandé",
+                    featuresTitle: "Tout ce qu'il y a dans Pro, plus :",
+                    features: [
+                        "Sécurité Avancée (SSO, Logs d'audit)",
+                        "API & Intégrations sur mesure (ERP)",
+                        "Manager de Compte dédié 24/7",
+                        "Formation sur site offerte"
+                    ],
+                    action: "Contacter pour Upgrader",
+                    responseTime: "Réponse garantie sous 2h ouvrées."
+                },
+                securePayment: "Paiement Sécurisé SSL",
+                needHelp: "Besoin d'aide ?",
+                invoiceHistory: "Historique des factures",
+                viewAll: "Tout voir",
                 table: {
                     date: "Date",
+                    reference: "Référence",
                     amount: "Montant",
                     status: "Statut",
-                    invoice: "Facture",
-                    paid: "Payé"
+                    action: "Action"
                 },
-                mmModal: {
-                    title: "Paiement Mobile Money",
+                status: {
+                    paid: "Payée",
+                    pending: "En attente",
+                    validation: "Validation",
+                    today: "Aujourd'hui"
+                },
+                paymentMethod: "Moyen de paiement",
+                default: "Défaut",
+                manualPayment: "Paiement manuel",
+                declarePayment: "Déclarer un paiement",
+                addMethod: "Ajouter une méthode",
+                billingDetails: "Infos de facturation",
+                emailDesc: "Les factures seront envoyées à cette adresse.",
+                nif: "NIF",
+                rccm: "RCCM",
+                billingEmail: "Email de facturation",
+                airtelModal: {
+                    title: "Paiement Airtel Money",
                     instructions: "Instructions de paiement :",
-                    sendTo: "Pour renouveler votre abonnement, envoyez",
-                    number: "au numéro Airtel Money :",
-                    name: "Nom : Timmy SAS",
+                    sendTo: "Envoyer le montant au :",
+                    name: "(Nom : Timmy SAS)",
+                    step2: "Attendez le SMS de confirmation contenant l'ID de transaction.",
+                    step3: "Remplissez le formulaire ci-dessous pour validation.",
+                    transactionId: "ID Transaction",
+                    idDesc: "L'ID se trouve dans le SMS de confirmation Airtel.",
                     proof: "Preuve de paiement",
-                    refPlaceholder: "Référence Transaction (ex: ID 123456789)",
-                    upload: "Télécharger une capture",
-                    change: "Cliquer pour changer",
-                    sendProof: "Envoyer la preuve"
-                },
-                upgradeModal: {
-                    title: "Passez au niveau supérieur 🚀",
-                    current: "ACTUEL",
-                    activePlan: "Plan Actif",
-                    recommended: "RECOMMANDÉ",
-                    choose: "Choisir ce plan",
-                    processing: "Traitement...",
-                    sent: "Demande envoyée !"
+                    uploadDesc: "Cliquez pour ajouter une capture",
+                    uploadLimit: "PNG, JPG jusqu'à 5MB",
+                    confirm: "Confirmer le paiement",
+                    validating: "Validation..."
                 },
                 editModal: {
-                    title: "Modifier les détails de facturation",
-                    company: "Nom de l'entreprise",
-                    address: "Adresse complète",
-                    email: "Email de facturation"
+                    title: "Infos de facturation",
+                    companyName: "Nom de l'entreprise",
+                    address: "Adresse",
+                    city: "Ville & Pays",
+                    saving: "Enregistrement...",
+                    save: "Enregistrer les modifications"
+                },
+                toasts: {
+                    paymentSuccess: "Paiement déclaré avec succès. Validation en cours.",
+                    billingUpdated: "Informations de facturation mises à jour",
+                    planEnterpriseSent: "Votre demande de passage au plan Entreprise a été envoyée. Un conseiller vous contactera."
                 }
             },
             integrations: {
                 title: "Intégrations",
-                connected: "Connecté",
-                comingSoon: "Bientôt",
-                whatsapp: {
-                    title: "WhatsApp Business API",
-                    desc: "Connecté via Meta Cloud API",
-                    quota: "Quota Messages",
-                    quality: "Qualité Ligne"
+                subtitle: "Connectez Timmy à vos outils de paie, RH et communication favoris.",
+                searchPlaceholder: "Rechercher une intégration (ex: Sage, Excel...)",
+                categories: {
+                    all: "Tout",
+                    communication: "Communication",
+                    productivity: "Productivité",
+                    finance: "Finance",
+                    developer: "Développeur"
                 },
-                mobileMoney: {
-                    title: "Exports Mobile Money",
-                    desc: "Générez des fichiers de paiement de masse compatibles portails Airtel & Moov."
+                status: {
+                    active: "Actif",
+                    inactive: "Inactif",
+                    alwaysActive: "Toujours actif",
+                    comingSoon: "Bientôt disponible"
+                },
+                actions: {
+                    configure: "Configurer",
+                    learnMore: "En savoir plus"
+                },
+                missingTool: {
+                    title: "Un outil manquant ?",
+                    desc: "Dites-nous quel logiciel vous utilisez, nous l'ajouterons à la roadmap.",
+                    action: "Suggérer une intégration"
+                },
+                api: {
+                    title: "Accès API Développeur",
+                    desc: "Vous avez une équipe IT interne ? Utilisez notre API REST sécurisée pour construire vos propres connecteurs et extraire vos données brutes en temps réel.",
+                    docs: "Documentation",
+                    generateKey: "Générer une Clé API"
+                },
+                whatsapp: {
+                    title: "WhatsApp Business",
+                    desc: "Le canal n°1. Envoi automatique des shifts et alertes directement sur le mobile des ouvriers.",
+                    quota: "Quota Messages",
+                    quality: "Qualité Ligne",
+                    excellent: "Excellent"
                 },
                 googleSheets: {
-                    title: "Synchro Google Sheets",
+                    title: "Google Sheets",
                     desc: "Synchronisez vos pointages en temps réel vers une feuille Google Sheets.",
-                    connect: "Connecter Google",
-                    info: "Envoie automatiquement les heures validées vers votre feuille choisie chaque nuit à minuit."
+                    activeTitle: "Synchronisation active",
+                    lastExport: "Dernier export : {time}",
+                    viewSheet: "Voir la feuille"
                 },
-                calendar: {
-                    title: "Calendrier",
-                    desc: "Affichez les shifts de votre équipe directement dans votre calendrier personnel (Google/Outlook).",
-                    connect: "Connecter"
+                sage: {
+                    title: "Sage Paie",
+                    desc: "Le standard comptable. Export natif des heures vers Sage 100c et Sage Business Cloud.",
+                    version: "Version",
+                    lastExport: "Dernier export"
                 },
-                sections: {
-                    company: "Entreprise & Stratégie",
-                    accounting: "Comptabilité & ERP",
-                    access: "Contrôle d'Accès (IoT)",
-                    bi: "Business Intelligence"
+                excel: {
+                    title: "Excel / CSV",
+                    desc: "L'universel. Exports formatés pour analyse ou import dans tout système tiers."
                 },
-                hiring: {
-                    title: "Timmy Hiring",
-                    powered: "Propulsé par Jaden",
-                    desc: "Besoin de renforts ? Trouvez des profils qualifiés en 1 clic.",
-                    discover: "Découvrir"
+                outlook: {
+                    title: "Outlook Calendar",
+                    desc: "Affichage des plannings de production directement dans les calendriers Outlook Microsoft 365.",
+                    syncActive: "Synchro bi-directionnelle active"
                 },
-                webhook: {
-                    title: "Webhook",
-                    desc: "Recevez des événements en temps réel (Pointages, etc.)",
-                    url: "URL de Callback",
-                    test: "Tester"
+                googleDrive: {
+                    title: "Google Drive",
+                    desc: "Archivage légal et automatique des preuves photos et feuilles de temps signées.",
+                    connectedTo: "Connecté à \"{name}\"",
+                    syncCount: "{count} fichiers synchronisés cette semaine."
+                },
+                sms: {
+                    title: "SMS Gateway",
+                    desc: "Alertes SMS (Infobip/Twilio) pour toucher 100% des employés, même sans smartphone.",
+                    balance: "Solde SMS"
+                },
+                mobileMoneyExports: {
+                    title: "Exports Mobile Money",
+                    desc: "Générez des fichiers de paiement de masse compatibles portails Airtel & Moov."
                 }
             },
             profile: {
@@ -1511,97 +1599,185 @@ export const translations = {
                 whatsappConsent: "WhatsApp messages are only sent to employees who have consented via their profile."
             },
             billing: {
-                title: "Subscription & Billing",
+                title: "My Subscription",
+                subtitle: "Manage your plan, invoices, and payment methods.",
                 active: "ACTIVE",
-                monthly: "Monthly billing • Next payment on Jan 15",
-                month: "/month",
-                employeeUsage: "Employee Usage",
-                upgradePrompt: "Need more?",
-                upgradeLink: "Upgrade to Unlimited Plan",
-                paymentMethod: "Payment Method",
-                edit: "Edit",
-                expires: "Expires on",
-                altPayment: "Alternative Payment",
-                mobileMoneyBtn: "Pay via Mobile Money / Transfer",
-                billingDetails: "Billing Details",
-                invoiceHistory: "Invoice History",
+                activePlan: "Active Plan",
+                currentPlan: "Your current plan",
+                monthly: "Monthly",
+                annual: "Annual",
+                annualDiscount: "-20%",
+                renewalDate: "Renewal on {date}",
+                currencyPerMonth: "FCFA / month",
+                perActiveEmployee: "Per active employee.",
+                usageTitle: "Current usage",
+                activeEmployees: "Active employees",
+                connectedKiosks: "Connected kiosks",
+                locationsCount: "Number of locations",
+                needMore: "Need more?",
+                upgradePrompt: "Upgrade to Unlimited Plan",
+                nextPayment: "Next payment",
+                renewalDesc: "Your annual subscription will be automatically renewed. You'll receive a notification 7 days before.",
+                changePlan: "Change plan",
+                modalTitle: "Take your management to the next level",
+                modalSubtitle: "Change plans at any time. Billing will be adjusted pro-rata for remaining days.",
+                planStarter: {
+                    name: "Starter",
+                    price: "Free",
+                    desc: "To test the application.",
+                    features: ["10 employees max", "1 Kiosk", "Basic tracking"],
+                    action: "Switch to Starter"
+                },
+                planPro: {
+                    name: "Pro",
+                    features: ["Unlimited employees", "Offline Mode", "GPS & Photo anti-fraud", "Payroll Exports (Excel)"]
+                },
+                planEnterprise: {
+                    name: "Enterprise",
+                    price: "Quote based",
+                    desc: "Centralized billing & volume.",
+                    recommended: "Recommended",
+                    featuresTitle: "Everything in Pro, plus:",
+                    features: [
+                        "Advanced Security (SSO, Audit Logs)",
+                        "Custom API & Integrations (ERP)",
+                        "Dedicated Account Manager 24/7",
+                        "Free onsite training"
+                    ],
+                    action: "Contact to Upgrade",
+                    responseTime: "Guaranteed response within 2 business hours."
+                },
+                securePayment: "SSL Secure Payment",
+                needHelp: "Need help?",
+                invoiceHistory: "Invoice history",
+                viewAll: "View all",
                 table: {
                     date: "Date",
+                    reference: "Reference",
                     amount: "Amount",
                     status: "Status",
-                    invoice: "Invoice",
-                    paid: "Paid"
+                    action: "Action"
                 },
-                mmModal: {
-                    title: "Mobile Money Payment",
-                    instructions: "Payment Instructions:",
-                    sendTo: "To renew your subscription, send",
-                    number: "to Airtel Money number:",
-                    name: "Name: Timmy SAS",
-                    proof: "Proof of Payment",
-                    refPlaceholder: "Transaction Reference (e.g. ID 123456789)",
-                    upload: "Upload a screenshot",
-                    change: "Click to change",
-                    sendProof: "Send Proof"
+                status: {
+                    paid: "Paid",
+                    pending: "Pending",
+                    validation: "Validation",
+                    today: "Today"
                 },
-                upgradeModal: {
-                    title: "Upgrade to the next level 🚀",
-                    current: "CURRENT",
-                    activePlan: "Active Plan",
-                    recommended: "RECOMMENDED",
-                    choose: "Choose this plan",
-                    processing: "Processing...",
-                    sent: "Request Sent!"
+                paymentMethod: "Payment method",
+                default: "Default",
+                manualPayment: "Manual payment",
+                declarePayment: "Declare a payment",
+                addMethod: "Add a method",
+                billingDetails: "Billing details",
+                emailDesc: "Invoices will be sent to this address.",
+                nif: "NIF",
+                rccm: "RCCM",
+                billingEmail: "Billing email",
+                airtelModal: {
+                    title: "Airtel Money Payment",
+                    instructions: "Payment instructions:",
+                    sendTo: "Send the amount to:",
+                    name: "(Name: Timmy SAS)",
+                    step2: "Wait for the confirmation SMS with the transaction ID.",
+                    step3: "Fill in the form below for validation.",
+                    transactionId: "Transaction ID",
+                    idDesc: "The ID is found in the Airtel confirmation SMS.",
+                    proof: "Proof of payment",
+                    uploadDesc: "Click to add a screenshot",
+                    uploadLimit: "PNG, JPG up to 5MB",
+                    confirm: "Confirm payment",
+                    validating: "Validating..."
                 },
                 editModal: {
-                    title: "Edit Billing Details",
-                    company: "Company Name",
-                    address: "Full Address",
-                    email: "Billing Email"
+                    title: "Billing information",
+                    companyName: "Company name",
+                    address: "Address",
+                    city: "City & Country",
+                    saving: "Saving...",
+                    save: "Save changes"
+                },
+                toasts: {
+                    paymentSuccess: "Payment successfully declared. Validation pending.",
+                    billingUpdated: "Billing information updated",
+                    planEnterpriseSent: "Your request for the Enterprise plan has been sent. An advisor will contact you."
                 }
             },
             integrations: {
                 title: "Integrations",
-                connected: "Connected",
-                comingSoon: "Coming Soon",
-                whatsapp: {
-                    title: "WhatsApp Business API",
-                    desc: "Connected via Meta Cloud API",
-                    quota: "Message Quota",
-                    quality: "Line Quality"
+                subtitle: "Connect Timmy to your favorite payroll, HR, and communication tools.",
+                searchPlaceholder: "Search for an integration (e.g. Sage, Excel...)",
+                categories: {
+                    all: "All",
+                    communication: "Communication",
+                    productivity: "Productivity",
+                    finance: "Finance",
+                    developer: "Developer"
                 },
-                mobileMoney: {
-                    title: "Mobile Money Exports",
-                    desc: "Generate bulk payment files compatible with Airtel & Moov portals."
+                status: {
+                    active: "Active",
+                    inactive: "Inactive",
+                    alwaysActive: "Always active",
+                    comingSoon: "Coming soon"
+                },
+                actions: {
+                    configure: "Configure",
+                    learnMore: "Learn more"
+                },
+                missingTool: {
+                    title: "Missing a tool?",
+                    desc: "Tell us what software you use, we'll add it to the roadmap.",
+                    action: "Suggest an integration"
+                },
+                api: {
+                    title: "Developer API Access",
+                    desc: "Have an internal IT team? Use our secure REST API to build your own connectors and extract raw data in real-time.",
+                    docs: "Documentation",
+                    generateKey: "Generate an API Key"
+                },
+                whatsapp: {
+                    title: "WhatsApp Business",
+                    desc: "The #1 channel. Automatically send shifts and alerts directly to workers' mobiles.",
+                    quota: "Message Quota",
+                    quality: "Line Quality",
+                    excellent: "Excellent"
                 },
                 googleSheets: {
-                    title: "Google Sheets Sync",
-                    desc: "Sync your attendance logs in real-time to a Google Sheet.",
-                    connect: "Connect Google",
-                    info: "Automatically sends validated hours to your chosen sheet every night at midnight."
+                    title: "Google Sheets",
+                    desc: "Sync your attendance in real-time to a Google Sheets sheet.",
+                    activeTitle: "Active sync",
+                    lastExport: "Last export: {time}",
+                    viewSheet: "View sheet"
                 },
-                calendar: {
-                    title: "Calendar",
-                    desc: "Display your team's shifts directly in your personal calendar (Google/Outlook).",
-                    connect: "Connect"
+                sage: {
+                    title: "Sage Payroll",
+                    desc: "The accounting standard. Native export of hours to Sage 100c and Sage Business Cloud.",
+                    version: "Version",
+                    lastExport: "Last export"
                 },
-                sections: {
-                    company: "Company & Strategy",
-                    accounting: "Accounting & ERP",
-                    access: "Access Control (IoT)",
-                    bi: "Business Intelligence"
+                excel: {
+                    title: "Excel / CSV",
+                    desc: "The universal one. Formatted exports for analysis or import into any third-party system."
                 },
-                hiring: {
-                    title: "Timmy Hiring",
-                    powered: "Powered by Jaden",
-                    desc: "Need reinforcements? Find qualified profiles in 1 click.",
-                    discover: "Discover"
+                outlook: {
+                    title: "Outlook Calendar",
+                    desc: "Display production schedules directly in Microsoft 365 Outlook calendars.",
+                    syncActive: "Active bi-directional sync"
                 },
-                webhook: {
-                    title: "Webhook",
-                    desc: "Receive real-time events (Clock-ins, etc.)",
-                    url: "Callback URL",
-                    test: "Test"
+                googleDrive: {
+                    title: "Google Drive",
+                    desc: "Legal and automatic archiving of photo evidence and signed timesheets.",
+                    connectedTo: "Connected to \"{name}\"",
+                    syncCount: "{count} files synced this week."
+                },
+                sms: {
+                    title: "SMS Gateway",
+                    desc: "SMS alerts (Infobip/Twilio) to reach 100% of employees, even without smartphones.",
+                    balance: "SMS Balance"
+                },
+                mobileMoneyExports: {
+                    title: "Mobile Money Exports",
+                    desc: "Generate bulk payment files compatible with Airtel & Moov portals."
                 }
             },
             profile: {
