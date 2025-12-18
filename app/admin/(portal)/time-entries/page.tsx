@@ -61,6 +61,13 @@ export default function AttendanceLogsPage() {
     // Toast State
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => setToast(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast]);
+
     const [orgSettings, setOrgSettings] = useState<any>(null);
     const [isPeriodLocked, setIsPeriodLocked] = useState(false);
 
@@ -232,6 +239,7 @@ export default function AttendanceLogsPage() {
             alert("Error saving entry");
         } else {
             setManualEntryStatus("success");
+            setToast({ message: t.common?.success || "Succès", type: "success" });
             setTimeout(() => {
                 setManualEntryStatus("idle");
                 setIsManualEntryModalOpen(false);
@@ -579,37 +587,43 @@ export default function AttendanceLogsPage() {
         };
     })();
 
-    const handleQuickFix = async (anomaly: { employee_id: string, date: string, last_log: Log }) => {
-        if (!organizationId) return;
-        const confirmFix = window.confirm(`Fix ${anomaly.last_log.employee?.first_name || 'Employee'}'s missing checkout for ${anomaly.date} by setting it to 18:00?`);
-        if (!confirmFix) return;
+    const handleQuickFix = (anomaly: { employee_id: string, date: string, last_log: Log }) => {
+        // 1. Determine Default Time
+        let proposedTime = "18:00"; // Fallback
 
-        // Auto-create checkout at 18:00
-        const fixDate = anomaly.date;
-        const fixTime = "18:00:00";
-        const fullTimestamp = new Date(`${fixDate}T${fixTime}`).toISOString();
+        // A. Check for Shift
+        const anomalyDate = new Date(anomaly.date);
+        const empShift = shifts.find(s => {
+            const sDate = new Date(s.start_time);
+            return s.employee_id === anomaly.employee_id &&
+                sDate.getDate() === anomalyDate.getDate() &&
+                sDate.getMonth() === anomalyDate.getMonth() &&
+                sDate.getFullYear() === anomalyDate.getFullYear();
+        });
 
-        const { error } = await supabase
-            .from('attendance_logs')
-            .insert({
-                organization_id: organizationId,
-                employee_id: anomaly.employee_id,
-                site_id: (anomaly.last_log as any).site_id, // Use same site
-                type: 'CHECK_OUT',
-                timestamp: fullTimestamp,
-                is_manual_entry: true,
-                correction_reason: "Smart Fix: Forgot to clock out",
-                is_offline_sync: false,
-                kiosk_id: null
-            });
-
-        if (error) {
-            alert("Error fixing anomaly");
-            console.error(error);
+        if (empShift) {
+            // Use Shift End Time
+            const endTime = new Date(empShift.end_time);
+            proposedTime = endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         } else {
-            // Refresh
-            fetchLogs(organizationId);
+            // B. Use Org Default End Time
+            const settingsEndTime = orgSettings?.planning?.end_time;
+            if (settingsEndTime) {
+                proposedTime = settingsEndTime;
+            }
         }
+
+        // 2. Open Modal Pre-filled
+        setEditingId(null); // It's a new entry (OUT)
+        setManualForm({
+            employee_id: anomaly.employee_id,
+            type: "OUT",
+            date: anomaly.date,
+            time: proposedTime,
+            site_id: (anomaly.last_log as any).site_id || "",
+            reason: "Oubli de pointage (Correction auto)"
+        });
+        setIsManualEntryModalOpen(true);
     };
 
     // --- LOCK / VALIDATION LOGIC ---
@@ -787,7 +801,20 @@ export default function AttendanceLogsPage() {
                                                 onClick={() => handleQuickFix(anomaly)}
                                                 className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-bold hover:bg-red-200 transition-colors"
                                             >
-                                                {t.dashboard?.fixBtn || "Fix (Set 18:00)"}
+                                                {(() => {
+                                                    // Duplicate logic for display (could actulaly be extracted to a helper if needed, but simple enough here)
+                                                    let time = "18:00";
+                                                    const d = new Date(anomaly.date);
+                                                    const s = shifts.find(sh => {
+                                                        const sd = new Date(sh.start_time);
+                                                        return sh.employee_id === anomaly.employee_id && sd.getDate() === d.getDate() && sd.getMonth() === d.getMonth();
+                                                    });
+                                                    if (s) time = new Date(s.end_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                                                    else if (orgSettings?.planning?.end_time) time = orgSettings.planning.end_time;
+
+                                                    const baseLabel = t.dashboard?.fixBtn || "Corriger";
+                                                    return `${baseLabel} (${time})`;
+                                                })()}
                                             </button>
                                         </div>
                                     ))}
@@ -1473,6 +1500,13 @@ export default function AttendanceLogsPage() {
                     </div>
                 )
             }
+            {/* TOAST */}
+            {toast && (
+                <div className={`fixed bottom-6 right-6 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 z-[100] ${toast.type === 'success' ? 'bg-[#0F4C5C] text-white' : 'bg-red-500 text-white'}`}>
+                    {toast.type === 'success' ? <CheckCircle className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
+                    <span className="font-bold text-base">{toast.message}</span>
+                </div>
+            )}
 
         </div >
     );
