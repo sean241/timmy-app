@@ -101,7 +101,11 @@ export default function DashboardPage() {
                 // Total active employees count
                 supabase.from('employees').select('id', { count: 'exact' }).eq('organization_id', orgId).eq('is_active', true),
                 // Yesterday logs for anomalies
-                supabase.from('attendance_logs').select('employee_id, type').eq('organization_id', orgId).gte('timestamp', new Date(Date.now() - 86400000 * 2).toISOString()).lt('timestamp', startOfDay) // Fetch last 48h roughly to be safe, clipped by startOfDay
+                supabase.from('attendance_logs')
+                    .select('employee_id, type')
+                    .eq('organization_id', orgId)
+                    .gte('timestamp', new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0] + 'T00:00:00.000Z')
+                    .lt('timestamp', new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0] + 'T23:59:59.999Z')
             ]);
 
             // 4. Compute KPIs
@@ -244,15 +248,20 @@ export default function DashboardPage() {
             // Calculate Anomalies (Yesterday)
             const anomaliesSet = new Set<string>();
             const yesterdayMap = new Map<string, string[]>();
+
             yesterdayLogs?.forEach((l: any) => {
                 const arr = yesterdayMap.get(l.employee_id) || [];
                 arr.push(l.type);
                 yesterdayMap.set(l.employee_id, arr);
             });
+
             yesterdayMap.forEach((types, empId) => {
                 const ins = types.filter(t => t === 'IN' || t === 'CHECK_IN').length;
                 const outs = types.filter(t => t === 'OUT' || t === 'CHECK_OUT').length;
-                if (ins !== outs) anomaliesSet.add(empId);
+
+                if (ins !== outs) {
+                    anomaliesSet.add(empId);
+                }
             });
 
             // Build Alerts
