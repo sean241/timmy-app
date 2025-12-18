@@ -43,19 +43,18 @@ export default function EmployeesPage() {
                     if (profile.organization_id) {
                         const { data: org } = await supabase.from('organizations').select('name').eq('id', profile.organization_id).single();
                         if (org) setCompanyName(org.name);
+
+                        // Fetch employees and sites only if we have an organization
+                        await fetchEmployees(profile.organization_id);
+                        const { data: siteData, error: siteError } = await supabase.from('sites').select('*').eq('organization_id', profile.organization_id);
+                        if (!siteError) setSites(siteData || []);
                     }
                 }
             }
-
-            if (profile?.organization_id) {
-                await fetchEmployees(profile.organization_id);
-            }
-            const { data: siteData, error: siteError } = await supabase.from('sites').select('*');
-            if (!siteError) setSites(siteData || []);
             setIsLoading(false);
         };
         fetchData();
-    }, []);
+    }, [fetchEmployees]);
 
 
     // State
