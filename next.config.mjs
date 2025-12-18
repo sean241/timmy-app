@@ -8,6 +8,16 @@ const nextConfig = {
         // Ignore les erreurs de type (ex: any) pendant le build
         ignoreBuildErrors: true,
     },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'gsdsdacwkkjymunbrpis.supabase.co',
+                port: '',
+                pathname: '/storage/v1/object/public/**',
+            },
+        ],
+    },
 };
 
 export default nextConfig;
