@@ -6,8 +6,8 @@ import { Employee } from '@/types'
 interface KioskLog {
     employee_id: string;
     organization_id: string;
-    site_id: string;
-    kiosk_id: string;
+    site_id?: string | null;
+    kiosk_id?: string | null;
     type: 'IN' | 'OUT';
     timestamp: string;
     photo?: string;
@@ -80,7 +80,8 @@ export async function pushKioskLogs(logs: KioskLog[]) {
             kiosk_id: log.kiosk_id,
             type: log.type === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
             timestamp: log.timestamp,
-            photo: photoPath, // Store the path to the private bucket
+            photo_url: photoPath, // Fixed: database column is photo_url
+            is_offline_sync: true, // Mark as synced from offline for tracking
             created_at: new Date().toISOString()
         });
     }

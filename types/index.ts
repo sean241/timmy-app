@@ -26,6 +26,9 @@ export interface Log {
     id?: number; // Auto-incremented by Dexie
     employee_id: string;
     employee_name: string; // Denormalized for easier display
+    organization_id: string;
+    site_id: string;
+    kiosk_id: string;
     type: LogType;
     timestamp: string; // ISO string
     photo: string; // Base64

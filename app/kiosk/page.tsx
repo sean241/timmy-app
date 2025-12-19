@@ -163,8 +163,16 @@ export default function KioskPage() {
         try {
             const term = await db.terminals.get(terminalId);
             if (term) {
-                // Update active kiosk in local_config
-                await db.local_config.put({ key: "kiosk_id", value: terminalId });
+                // Update active kiosk IN BULK in local_config
+                await db.local_config.bulkPut([
+                    { key: "kiosk_id", value: terminalId },
+                    { key: "organization_id", value: term.organization_id },
+                    { key: "site_id", value: term.site_id },
+                    { key: "org_name", value: term.organization_name },
+                    { key: "site_name", value: term.site_name },
+                    { key: "org_logo", value: term.logo_url || "" },
+                    { key: "kiosk_name", value: term.name }
+                ]);
 
                 // Update state immediately for visual feedback
                 setOrgName(term.organization_name);
@@ -239,10 +247,18 @@ export default function KioskPage() {
         try {
             const timestamp = new Date().toISOString();
 
+            // Get current IDs for tracking
+            const orgId = (await db.local_config.get("organization_id"))?.value as string;
+            const siteId = (await db.local_config.get("site_id"))?.value as string;
+            const kioskId = (await db.local_config.get("kiosk_id"))?.value as string;
+
             // 1. Save locally first (Optimistic UI)
             const logId = await db.local_logs.add({
                 employee_id: employee.id,
                 employee_name: `${employee.first_name} ${employee.last_name}`,
+                organization_id: orgId || "",
+                site_id: siteId || "",
+                kiosk_id: kioskId || "",
                 type,
                 timestamp,
                 photo,
@@ -332,6 +348,7 @@ export default function KioskPage() {
 
     const handleSync = async (silent = false) => {
         if (!silent) setSyncing(true);
+        let hasSuccess = false;
         try {
             // 1. Get Cached IDs
             const kioskId = (await db.local_config.get("kiosk_id"))?.value as string;
@@ -340,26 +357,25 @@ export default function KioskPage() {
 
             if (!kioskId) return;
 
-            // 2. Push Pending Logs (INDEPENDENT of config fetch)
+            // 2. Push Pending Logs
             const pendingLogs = await db.local_logs.where("status").equals("PENDING").toArray();
-            if (pendingLogs.length > 0 && cachedOrgId) {
-                if (!silent) console.log(`Pushing ${pendingLogs.length} pending logs...`);
-
+            if (pendingLogs.length > 0) {
                 const logsPayload = pendingLogs.map(log => ({
-                    ...log,
-                    organization_id: cachedOrgId,
-                    site_id: cachedSiteId,
-                    kiosk_id: kioskId
-                }));
+                    employee_id: log.employee_id,
+                    organization_id: log.organization_id || cachedOrgId,
+                    site_id: log.site_id || cachedSiteId || null,
+                    kiosk_id: log.kiosk_id || kioskId || null,
+                    type: log.type,
+                    timestamp: log.timestamp,
+                    photo: log.photo
+                })).filter(log => !!log.organization_id); // Safety: filter out logs without org_id
 
                 const pushResult = await pushKioskLogs(logsPayload);
 
                 if (pushResult.success) {
                     await db.local_logs.bulkPut(pendingLogs.map(l => ({ ...l, status: 'SYNCED' })));
-                    if (!silent) {
-                        setMsg("SYNCHRONISATION RÉUSSIE");
-                        setTimeout(() => setMsg(null), 2000);
-                    }
+                    hasSuccess = true;
+                    console.log(`${pendingLogs.length} logs synced successfully`);
                 } else {
                     console.error("Log push failed:", pushResult.error);
                 }
@@ -370,6 +386,7 @@ export default function KioskPage() {
 
             if (configResult.success && configResult.config) {
                 const { organization_id, site_id, organization_name, site_name, kiosk_name, organization_logo } = configResult.config;
+                hasSuccess = true;
 
                 // Update Local Config
                 await db.local_config.bulkPut([
@@ -410,12 +427,14 @@ export default function KioskPage() {
                         await db.local_employees.clear();
                         await db.local_employees.bulkAdd(empResult.employees as Employee[]);
                     });
-
                     if (showEmployeeList) await handleOpenEmployeeList();
                 }
-            } else if (!silent && pendingLogs.length === 0) {
-                // If logs push skipped (none) and config failed, show generic error
-                console.error("Config sync failed:", configResult.error);
+            }
+
+            // Final feedback
+            if (!silent && hasSuccess) {
+                setMsg("SYNCHRONISATION RÉUSSIE");
+                setTimeout(() => setMsg(null), 2000);
             }
 
         } catch (error) {
