@@ -311,38 +311,61 @@ export default function KioskPage() {
 
         checkPairing();
 
+        // Listen for online status to trigger sync
+        const handleOnline = () => {
+            console.log("Device online - triggering sync...");
+            handleSync(true);
+        };
+        window.addEventListener('online', handleOnline);
+
         const interval = setInterval(() => {
             if (navigator.onLine) {
-                console.log("Running background sync...");
                 handleSync(true);
             }
         }, 60000); // Every 60 seconds
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('online', handleOnline);
+        };
     }, []);
 
     const handleSync = async (silent = false) => {
         if (!silent) setSyncing(true);
         try {
-            // 1. Get Kiosk ID
-            let kioskId = (await db.local_config.get("kiosk_id"))?.value as string;
+            // 1. Get Cached IDs
+            const kioskId = (await db.local_config.get("kiosk_id"))?.value as string;
+            const cachedOrgId = (await db.local_config.get("organization_id"))?.value as string;
+            const cachedSiteId = (await db.local_config.get("site_id"))?.value as string;
 
-            // FALLBACK: If not specifically set, use the first terminal in Dexie
-            if (!kioskId) {
-                const terms = await db.terminals.toArray();
-                if (terms.length > 0) {
-                    kioskId = terms[0].id;
-                    await db.local_config.put({ key: "kiosk_id", value: kioskId });
+            if (!kioskId) return;
+
+            // 2. Push Pending Logs (INDEPENDENT of config fetch)
+            const pendingLogs = await db.local_logs.where("status").equals("PENDING").toArray();
+            if (pendingLogs.length > 0 && cachedOrgId) {
+                if (!silent) console.log(`Pushing ${pendingLogs.length} pending logs...`);
+
+                const logsPayload = pendingLogs.map(log => ({
+                    ...log,
+                    organization_id: cachedOrgId,
+                    site_id: cachedSiteId,
+                    kiosk_id: kioskId
+                }));
+
+                const pushResult = await pushKioskLogs(logsPayload);
+
+                if (pushResult.success) {
+                    await db.local_logs.bulkPut(pendingLogs.map(l => ({ ...l, status: 'SYNCED' })));
+                    if (!silent) {
+                        setMsg("SYNCHRONISATION RÉUSSIE");
+                        setTimeout(() => setMsg(null), 2000);
+                    }
                 } else {
-                    // No terminal found at all, stop sync and wait for setup
-                    if (!silent) console.log("No terminal paired. Stopping sync.");
-                    return;
+                    console.error("Log push failed:", pushResult.error);
                 }
             }
 
-            if (!silent) console.log("Syncing for Kiosk ID:", kioskId);
-
-            // 2. Fetch Kiosk Config
+            // 3. Fetch/Update Kiosk Config
             const configResult = await fetchKioskConfig(kioskId);
 
             if (configResult.success && configResult.config) {
@@ -370,7 +393,7 @@ export default function KioskPage() {
                     logo_url: organization_logo
                 });
 
-                // Update State
+                // Update UI State
                 setOrgName(organization_name || "Organization");
                 setSiteName(site_name || "Site");
                 setKioskName(kiosk_name || "Terminal");
@@ -380,53 +403,19 @@ export default function KioskPage() {
                 const terms = await db.terminals.toArray();
                 setPairedTerminals(terms);
 
-                // 3. Fetch Employees for this Org
+                // 4. Update Employees
                 const empResult = await fetchOrganizationEmployees(organization_id);
-
                 if (empResult.success && empResult.employees) {
-                    // Transaction to ensure atomicity
                     await db.transaction('rw', db.local_employees, async () => {
                         await db.local_employees.clear();
                         await db.local_employees.bulkAdd(empResult.employees as Employee[]);
                     });
 
-                    // Refresh list if open
-                    if (showEmployeeList) {
-                        await handleOpenEmployeeList();
-                    }
-
-                    if (!silent) console.log("Employees synced:", empResult.employees.length);
-                } else {
-                    console.error("Employee sync failed:", empResult.error);
+                    if (showEmployeeList) await handleOpenEmployeeList();
                 }
-
-                // 4. Push Pending Logs
-                const pendingLogs = await db.local_logs.where("status").equals("PENDING").toArray();
-
-                if (pendingLogs.length > 0) {
-                    if (!silent) console.log(`Pushing ${pendingLogs.length} pending logs...`);
-
-                    const logsPayload = pendingLogs.map(log => ({
-                        ...log,
-                        organization_id,
-                        site_id,
-                        kiosk_id: kioskId
-                    }));
-
-                    const pushResult = await pushKioskLogs(logsPayload);
-
-                    if (pushResult.success) {
-                        // Mark as synced
-                        const ids = pendingLogs.map(l => l.id!);
-                        await db.local_logs.bulkPut(pendingLogs.map(l => ({ ...l, status: 'SYNCED' })));
-                        if (!silent) console.log("Logs pushed successfully");
-                    } else {
-                        console.error("Log push failed:", pushResult.error);
-                    }
-                }
-
-            } else {
-                console.error("Kiosk config sync failed:", configResult.error);
+            } else if (!silent && pendingLogs.length === 0) {
+                // If logs push skipped (none) and config failed, show generic error
+                console.error("Config sync failed:", configResult.error);
             }
 
         } catch (error) {
