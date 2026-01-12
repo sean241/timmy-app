@@ -1233,13 +1233,13 @@ export default function AttendanceLogsPage() {
                                                                 alt="Proof"
                                                                 className="h-10 w-10 rounded object-cover border border-slate-200 cursor-zoom-in"
                                                             />
-                                                            {/* Tooltip Zoom Image (On hover) */}
-                                                            <div className="absolute left-12 top-[-50px] hidden group-hover/photo:block z-50">
+                                                            {/* Tooltip Zoom Image (On hover) - Fixed Center Screen */}
+                                                            <div className="fixed z-[9999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 hidden group-hover/photo:block pointer-events-none drop-shadow-2xl">
                                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                                 <img
                                                                     src={displayUrl}
                                                                     alt="Zoom"
-                                                                    className="h-32 w-32 rounded-lg border-2 border-white shadow-xl object-cover"
+                                                                    className="w-auto h-auto max-w-[500px] max-h-[500px] rounded-xl border-4 border-white shadow-2xl object-cover bg-black"
                                                                 />
                                                             </div>
                                                         </div>
