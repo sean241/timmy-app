@@ -343,9 +343,9 @@ export default function AttendanceLogsPage() {
             const newUrls: Record<string, string> = {};
             await Promise.all(logsWithPhotos.map(async (log) => {
                 if (log.photo && !secureUrlMap[log.id]) {
-                    const result = await getSecureUrl(log.photo) as unknown as { url: string | null };
-                    if (result?.url) {
-                        newUrls[log.id] = result.url;
+                    const url = await getSecureUrl(log.photo);
+                    if (url) {
+                        newUrls[log.id] = url;
                     }
                 }
             }));
