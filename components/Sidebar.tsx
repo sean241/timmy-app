@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -141,9 +143,23 @@ export default function Sidebar() {
             {/* Logo */}
             <div className={`p-6 shrink-0 flex items-center ${isCollapsed ? "justify-center px-2" : "justify-between"}`}>
                 <Link href="/admin/dashboard" className="flex items-center gap-2 transition-opacity hover:opacity-80 overflow-hidden">
-                    <span className={`font-bold text-2xl tracking-tight text-[#0F4C5C] ${isCollapsed ? "text-xl" : ""}`}>
-                        {isCollapsed ? "T" : "Timmy"}
-                    </span>
+                    {isCollapsed ? (
+                        <Image
+                            src="/images/timmy-blanc-vert.png"
+                            alt="Timmy"
+                            width={32}
+                            height={32}
+                            className="object-contain"
+                        />
+                    ) : (
+                        <Image
+                            src="/images/timmy_logo_dark.png"
+                            alt="Timmy"
+                            width={120}
+                            height={40}
+                            className="object-contain mb-1"
+                        />
+                    )}
                     {!isCollapsed && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E0F2F1] text-[#0F4C5C] uppercase tracking-wider">
                             PRO

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Mail, CheckCircle, Loader2 } from "lucide-react";
+import Image from "next/image";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { supabase } from "@/lib/supabase";
 
@@ -47,9 +48,15 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 {/* Logo */}
-                <div className="mt-12 mb-12 flex justify-center items-center gap-3">
-                    <div className="w-10 h-10 bg-[#0F4C5C] rounded-md flex items-center justify-center text-white font-bold text-xl">T</div>
-                    <span className="text-2xl font-bold text-[#0F4C5C] tracking-tight">Timmy</span>
+                <div className="mt-12 mb-12 flex justify-center items-center">
+                    <Image
+                        src="/images/timmy_logo_dark.png"
+                        width={180}
+                        height={60}
+                        alt="Timmy"
+                        className="object-contain"
+                        priority
+                    />
                 </div>
 
                 {/* Content */}
