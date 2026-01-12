@@ -533,142 +533,146 @@ export default function KiosksPage() {
             {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                            <h2 className="text-lg font-bold text-gray-900">
-                                {editingKioskId ? t.kiosks.modal.editTitle : t.kiosks.modal.newTitle}
-                            </h2>
-                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        {/* HEADER */}
+                        <div className="bg-[#0F4C5C] px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
+                                    {editingKioskId ? <PenTool size={16} className="text-[#FFC107]" /> : <Plus size={20} className="text-[#FFC107]" strokeWidth={3} />}
+                                </div>
+                                <h3 className="text-lg font-bold text-white tracking-wide">
+                                    {editingKioskId ? t.kiosks.modal.editTitle : t.kiosks.modal.newTitle}
+                                </h3>
+                            </div>
+                            <button onClick={() => setShowModal(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-900 mb-1">{t.kiosks.modal.name} <span className="text-red-500">*</span></label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#0F4C5C] focus:border-transparent outline-none transition-all"
-                                        placeholder={t.kiosks.modal.namePlaceholder}
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                        <Info size={12} />
-                                        Ce nom s&apos;affichera sur l&apos;écran d&apos;accueil et les rapports.
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-900 mb-1">{t.kiosks.modal.site} <span className="text-red-500">*</span></label>
-                                    <select
-                                        required
-                                        value={formData.site_id}
-                                        onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-[#0F4C5C] transition-all"
-                                    >
-                                        <option value="" disabled>{t.kiosks.modal.sitePlaceholder}</option>
-                                        {sites.map(site => (
-                                            <option key={site.id} value={site.id}>
-                                                {site.name} {!site.is_active ? `(${t.sites.archived})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <hr className="border-gray-100" />
-
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{t.kiosks.modal.security}</h3>
-
-                                {/* Photo Toggle */}
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-                                            <Camera size={18} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">{t.kiosks.modal.requirePhoto}</p>
-                                            <p className="text-xs text-gray-500">Caméra active à chaque pointage</p>
-                                        </div>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
+                        {/* BODY */}
+                        <div className="p-6 overflow-y-auto custom-scrollbar">
+                            <form id="kiosk-form" onSubmit={handleSubmit} className="space-y-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-900 mb-1">{t.kiosks.modal.name} <span className="text-red-500">*</span></label>
                                         <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            checked={formData.require_photo}
-                                            onChange={(e) => setFormData({ ...formData, require_photo: e.target.checked })}
+                                            type="text"
+                                            required
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#0F4C5C] focus:border-transparent outline-none transition-all"
+                                            placeholder={t.kiosks.modal.namePlaceholder}
                                         />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F4C5C]"></div>
-                                    </label>
-                                </div>
-
-                                {/* Badge Toggle */}
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
-                                            <CreditCard size={18} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">{t.kiosks.modal.requireBadge}</p>
-                                            <p className="text-xs text-gray-500">QR Code ou NFC sans PIN</p>
-                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                            <Info size={12} />
+                                            Ce nom s&apos;affichera sur l&apos;écran d&apos;accueil et les rapports.
+                                        </p>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            checked={formData.require_badge_scan}
-                                            onChange={(e) => setFormData({ ...formData, require_badge_scan: e.target.checked })}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F4C5C]"></div>
-                                    </label>
-                                </div>
 
-                                {/* Signature Toggle */}
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
-                                            <PenTool size={18} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900">{t.kiosks.modal.requireSignature}</p>
-                                            <p className="text-xs text-gray-500">Signature tactile requise</p>
-                                        </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-900 mb-1">{t.kiosks.modal.site} <span className="text-red-500">*</span></label>
+                                        <select
+                                            required
+                                            value={formData.site_id}
+                                            onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
+                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-[#0F4C5C] transition-all"
+                                        >
+                                            <option value="" disabled>{t.kiosks.modal.sitePlaceholder}</option>
+                                            {sites.map(site => (
+                                                <option key={site.id} value={site.id}>
+                                                    {site.name} {!site.is_active ? `(${t.sites.archived})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            checked={formData.require_signature}
-                                            onChange={(e) => setFormData({ ...formData, require_signature: e.target.checked })}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F4C5C]"></div>
-                                    </label>
                                 </div>
-                            </div>
 
-                            <div className="pt-4 flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-bold text-gray-700 hover:bg-gray-50 transition-colors"
-                                >
-                                    {t.kiosks.modal.cancel}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="flex-1 px-4 py-3 bg-[#0F4C5C] text-white rounded-lg font-bold hover:bg-[#0a3641] transition-colors shadow-sm disabled:opacity-70 flex items-center justify-center gap-2"
-                                >
-                                    {isLoading && <Loader2 size={18} className="animate-spin" />}
-                                    {isLoading ? t.kiosks.modal.saving : (editingKioskId ? t.kiosks.modal.update : t.kiosks.modal.create)}
-                                </button>
-                            </div>
-                        </form>
+                                <hr className="border-gray-100" />
+
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{t.kiosks.modal.security}</h3>
+
+                                    {/* Photo Toggle */}
+                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                                                <Camera size={18} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">{t.kiosks.modal.requirePhoto}</p>
+                                                <p className="text-xs text-gray-500">Caméra active à chaque pointage</p>
+                                            </div>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={formData.require_photo}
+                                                onChange={(e) => setFormData({ ...formData, require_photo: e.target.checked })}
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F4C5C]"></div>
+                                        </label>
+                                    </div>
+
+                                    {/* Badge Toggle */}
+                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                                                <CreditCard size={18} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">{t.kiosks.modal.requireBadge}</p>
+                                                <p className="text-xs text-gray-500">QR Code ou NFC sans PIN</p>
+                                            </div>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={formData.require_badge_scan}
+                                                onChange={(e) => setFormData({ ...formData, require_badge_scan: e.target.checked })}
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F4C5C]"></div>
+                                        </label>
+                                    </div>
+
+                                    {/* Signature Toggle */}
+                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+                                                <PenTool size={18} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">{t.kiosks.modal.requireSignature}</p>
+                                                <p className="text-xs text-gray-500">Signature tactile requise</p>
+                                            </div>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={formData.require_signature}
+                                                onChange={(e) => setFormData({ ...formData, require_signature: e.target.checked })}
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F4C5C]"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* FOOTER */}
+                        <div className="p-6 pt-2 bg-white rounded-b-xl shrink-0">
+                            <button
+                                type="submit"
+                                form="kiosk-form"
+                                disabled={isLoading}
+                                className="w-full bg-[#FFC107] hover:bg-[#e0a800] text-[#0F4C5C] font-extrabold text-base py-3.5 rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-70 flex justify-center items-center gap-2"
+                            >
+                                {isLoading && <Loader2 size={20} className="animate-spin" />}
+                                {isLoading ? t.kiosks.modal.saving : (editingKioskId ? t.kiosks.modal.update : t.kiosks.modal.create)}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
