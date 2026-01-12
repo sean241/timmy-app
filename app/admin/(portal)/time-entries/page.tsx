@@ -137,7 +137,8 @@ export default function AttendanceLogsPage() {
             // Map CHECK_IN/CHECK_OUT to IN/OUT for frontend consistency
             const mappedData = data?.map(log => ({
                 ...log,
-                type: log.type === 'CHECK_IN' ? 'IN' : 'OUT'
+                type: log.type === 'CHECK_IN' ? 'IN' : 'OUT',
+                photo: log.photo_url // Map DB column to Frontend field
             })) || [];
 
             setLogs(mappedData as Log[]);
