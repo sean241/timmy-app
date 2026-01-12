@@ -317,7 +317,17 @@ export default function KioskPage() {
     useEffect(() => {
         const checkPairing = async () => {
             try {
-                const kioskId = (await db.local_config.get("kiosk_id"))?.value;
+                let kioskId = (await db.local_config.get("kiosk_id"))?.value;
+
+                // RESTORE IDENTITY: If IndexedDB is wiped, try to recover from LocalStorage
+                if (!kioskId) {
+                    const backupId = localStorage.getItem("kiosk_id");
+                    if (backupId) {
+                        console.log("Restoring Kiosk ID from LocalStorage backup");
+                        await db.local_config.put({ key: "kiosk_id", value: backupId });
+                        kioskId = backupId;
+                    }
+                }
                 const terms = await db.terminals.toArray();
 
                 if (!kioskId && terms.length === 0) {

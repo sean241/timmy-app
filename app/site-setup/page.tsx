@@ -91,6 +91,9 @@ export default function SiteSetupPage() {
                     { key: "org_logo", value: config.organization_logo || "" }
                 ]);
 
+                // BACKUP: Persist ID in LocalStorage for redundancy
+                localStorage.setItem("kiosk_id", config.kiosk_id);
+
                 router.push("/kiosk");
             }
         } catch (err) {
