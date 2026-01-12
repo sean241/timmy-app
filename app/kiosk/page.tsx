@@ -381,26 +381,38 @@ export default function KioskPage() {
             if (!kioskId) return;
 
             // 2. Push Pending Logs
+            // 2. Push Pending Logs (Batched)
             const pendingLogs = await db.local_logs.where("status").equals("PENDING").toArray();
+
             if (pendingLogs.length > 0) {
-                const logsPayload = pendingLogs.map(log => ({
-                    employee_id: log.employee_id,
-                    organization_id: log.organization_id || cachedOrgId,
-                    site_id: log.site_id || cachedSiteId || null,
-                    kiosk_id: log.kiosk_id || kioskId || null,
-                    type: log.type,
-                    timestamp: log.timestamp,
-                    photo: log.photo
-                })).filter(log => !!log.organization_id); // Safety: filter out logs without org_id
+                const BATCH_SIZE = 5; // Photos are heavy (~100KB), limit batch size
 
-                const pushResult = await pushKioskLogs(logsPayload);
+                for (let i = 0; i < pendingLogs.length; i += BATCH_SIZE) {
+                    const batch = pendingLogs.slice(i, i + BATCH_SIZE);
 
-                if (pushResult.success) {
-                    await db.local_logs.bulkPut(pendingLogs.map(l => ({ ...l, status: 'SYNCED' })));
-                    hasSuccess = true;
-                    console.log(`${pendingLogs.length} logs synced successfully`);
-                } else {
-                    console.error("Log push failed:", pushResult.error);
+                    const logsPayload = batch.map(log => ({
+                        employee_id: log.employee_id,
+                        organization_id: log.organization_id || cachedOrgId,
+                        site_id: log.site_id || cachedSiteId || null,
+                        kiosk_id: log.kiosk_id || kioskId || null,
+                        type: log.type,
+                        timestamp: log.timestamp,
+                        photo: log.photo
+                    })).filter(log => !!log.organization_id);
+
+                    if (logsPayload.length === 0) continue;
+
+                    const pushResult = await pushKioskLogs(logsPayload);
+
+                    if (pushResult.success) {
+                        await db.local_logs.bulkPut(batch.map(l => ({ ...l, status: 'SYNCED' })));
+                        hasSuccess = true;
+                        console.log(`Synced batch ${i / BATCH_SIZE + 1}: ${batch.length} logs`);
+                    } else {
+                        console.error("Log push failed:", pushResult.error);
+                        // Stop processing next batches if one fails to preserve order/avoid gaps
+                        break;
+                    }
                 }
             }
 
