@@ -91,6 +91,9 @@ export default function SiteSetupPage() {
                     { key: "org_logo", value: config.organization_logo || "" }
                 ]);
 
+                // BACKUP: Persist ID in LocalStorage for redundancy
+                localStorage.setItem("kiosk_id", config.kiosk_id);
+
                 router.push("/kiosk");
             }
         } catch (err) {
@@ -186,7 +189,7 @@ export default function SiteSetupPage() {
                     {/* Footer */}
                     <div className="font-mono text-xs tracking-widest text-[#4FD1C5] opacity-80 space-y-1">
                         <p>TIMMY TIME CLOCK</p>
-                        <p>V1.0.8</p>
+                        <p>V0.9.2</p>
                     </div>
                 </div>
             </div>

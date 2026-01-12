@@ -41,6 +41,15 @@ export const metadata: Metadata = {
     shortcut: "/icon.png",
     apple: "/icon.png",
   },
+  manifest: '/manifest.json',
+};
+
+export const viewport = {
+  themeColor: '#0B3B46',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 import { LanguageProvider } from "./context/LanguageContext";

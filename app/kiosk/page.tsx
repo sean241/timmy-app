@@ -38,6 +38,7 @@ export default function KioskPage() {
     const [isValidating, setIsValidating] = useState(true);
 
     const webcamRef = useRef<Webcam>(null);
+    const isSyncingRef = useRef(false);
 
     // Language State
     const [locale, setLocale] = useState<"fr" | "en">("fr");
@@ -60,7 +61,7 @@ export default function KioskPage() {
             departure: "DÉPART",
             cancel: "Annuler",
             pinError: "Code PIN incorrect",
-            systemReady: "Timmy Terminal V1.0 • Système Prêt",
+            systemReady: "Timmy Terminal V0.9.2 • Système Prêt",
             goodDay: "Bonne journée !",
             goodBye: "Au revoir !",
             employee: "Employé",
@@ -84,7 +85,7 @@ export default function KioskPage() {
             departure: "CHECK-OUT",
             cancel: "Cancel",
             pinError: "Incorrect PIN Code",
-            systemReady: "Timmy Terminal V1.0 • System Ready",
+            systemReady: "Timmy Terminal V0.9.2 • System Ready",
             goodDay: "Have a good day!",
             goodBye: "Goodbye!",
             employee: "Employee",
@@ -315,17 +316,33 @@ export default function KioskPage() {
     // Background Sync Interval
     useEffect(() => {
         const checkPairing = async () => {
-            const kioskId = (await db.local_config.get("kiosk_id"))?.value;
-            const terms = await db.terminals.toArray();
+            try {
+                let kioskId = (await db.local_config.get("kiosk_id"))?.value;
 
-            if (!kioskId && terms.length === 0) {
-                console.log("No terminal paired, redirecting to setup...");
-                router.replace("/site-setup");
-                return;
+                // RESTORE IDENTITY: If IndexedDB is wiped, try to recover from LocalStorage
+                if (!kioskId) {
+                    const backupId = localStorage.getItem("kiosk_id");
+                    if (backupId) {
+                        console.log("Restoring Kiosk ID from LocalStorage backup");
+                        await db.local_config.put({ key: "kiosk_id", value: backupId });
+                        kioskId = backupId;
+                    }
+                }
+                const terms = await db.terminals.toArray();
+
+                if (!kioskId && terms.length === 0) {
+                    console.log("No terminal paired, redirecting to setup...");
+                    router.replace("/site-setup");
+                    return;
+                }
+
+                setIsValidating(false);
+                handleSync(true); // Initial sync on mount
+            } catch (e) {
+                console.error("Kiosk Boot Error:", e);
+                // Force UI unlock to allow retry or debugging
+                setIsValidating(false);
             }
-
-            setIsValidating(false);
-            handleSync(true); // Initial sync on mount
         };
 
         checkPairing();
@@ -350,6 +367,9 @@ export default function KioskPage() {
     }, []);
 
     const handleSync = async (silent = false) => {
+        if (isSyncingRef.current) return;
+        isSyncingRef.current = true;
+
         if (!silent) setSyncing(true);
         let hasSuccess = false;
         try {
@@ -361,26 +381,38 @@ export default function KioskPage() {
             if (!kioskId) return;
 
             // 2. Push Pending Logs
+            // 2. Push Pending Logs (Batched)
             const pendingLogs = await db.local_logs.where("status").equals("PENDING").toArray();
+
             if (pendingLogs.length > 0) {
-                const logsPayload = pendingLogs.map(log => ({
-                    employee_id: log.employee_id,
-                    organization_id: log.organization_id || cachedOrgId,
-                    site_id: log.site_id || cachedSiteId || null,
-                    kiosk_id: log.kiosk_id || kioskId || null,
-                    type: log.type,
-                    timestamp: log.timestamp,
-                    photo: log.photo
-                })).filter(log => !!log.organization_id); // Safety: filter out logs without org_id
+                const BATCH_SIZE = 5; // Photos are heavy (~100KB), limit batch size
 
-                const pushResult = await pushKioskLogs(logsPayload);
+                for (let i = 0; i < pendingLogs.length; i += BATCH_SIZE) {
+                    const batch = pendingLogs.slice(i, i + BATCH_SIZE);
 
-                if (pushResult.success) {
-                    await db.local_logs.bulkPut(pendingLogs.map(l => ({ ...l, status: 'SYNCED' })));
-                    hasSuccess = true;
-                    console.log(`${pendingLogs.length} logs synced successfully`);
-                } else {
-                    console.error("Log push failed:", pushResult.error);
+                    const logsPayload = batch.map(log => ({
+                        employee_id: log.employee_id,
+                        organization_id: log.organization_id || cachedOrgId,
+                        site_id: log.site_id || cachedSiteId || null,
+                        kiosk_id: log.kiosk_id || kioskId || null,
+                        type: log.type,
+                        timestamp: log.timestamp,
+                        photo: log.photo
+                    })).filter(log => !!log.organization_id);
+
+                    if (logsPayload.length === 0) continue;
+
+                    const pushResult = await pushKioskLogs(logsPayload);
+
+                    if (pushResult.success) {
+                        await db.local_logs.bulkPut(batch.map(l => ({ ...l, status: 'SYNCED' })));
+                        hasSuccess = true;
+                        console.log(`Synced batch ${i / BATCH_SIZE + 1}: ${batch.length} logs`);
+                    } else {
+                        console.error("Log push failed:", pushResult.error);
+                        // Stop processing next batches if one fails to preserve order/avoid gaps
+                        break;
+                    }
                 }
             }
 
@@ -445,6 +477,7 @@ export default function KioskPage() {
         } catch (error) {
             console.error("Sync error:", error);
         } finally {
+            isSyncingRef.current = false;
             if (!silent) setSyncing(false);
         }
     };
@@ -709,7 +742,7 @@ export default function KioskPage() {
                                                         {/* Avatar */}
                                                         <div className="w-14 h-14 rounded-full bg-slate-200 flex items-center justify-center text-lg font-bold text-slate-500 shrink-0 border-2 border-white shadow-sm overflow-hidden">
                                                             {emp.avatar_url ? (
-                                                                <Image src={emp.avatar_url} alt={emp.first_name || "Emp"} width={56} height={56} className="w-full h-full object-cover" />
+                                                                <img src={emp.avatar_url} alt={emp.first_name || "Emp"} className="w-full h-full object-cover" />
                                                             ) : (
                                                                 <span>{(emp.first_name?.charAt(0) || "")}{(emp.last_name?.charAt(0) || "")}</span>
                                                             )}
