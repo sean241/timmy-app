@@ -969,6 +969,7 @@ export const translations = {
                 importBtn: "Importer {count} employés",
                 successTitle: "Import Réussi !",
                 successDesc: "employés ont été ajoutés à votre équipe.",
+                successDescSingular: "employé a été ajouté à votre équipe.",
                 close: "Fermer"
             },
             badge: {
@@ -2065,6 +2066,7 @@ export const translations = {
                 importBtn: "Import {count} employees",
                 successTitle: "Import Successful!",
                 successDesc: "employees have been added to your team.",
+                successDescSingular: "employee has been added to your team.",
                 close: "Close"
             },
             badge: {

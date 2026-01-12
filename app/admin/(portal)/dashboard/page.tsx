@@ -276,6 +276,11 @@ export default function DashboardPage() {
                 alertsList.push({ type: 'critical', title: `${offlineKiosksList.length} Kiosque(s) Hors Ligne`, desc: offlineKiosksList.map((k: any) => k.name).join(', '), action: '/admin/terminals' });
             }
 
+            // Late Arrivals (New)
+            if (lateSet.size > 0) {
+                alertsList.push({ type: 'warning', title: `${lateSet.size} Retard(s) aujourd'hui`, desc: "Employés arrivés après l'heure prévue", action: '/admin/time-entries' });
+            }
+
             // Anomalies Yesterday
             if (anomaliesSet.size > 0) {
                 alertsList.push({ type: 'warning', title: `${anomaliesSet.size} Anomalies hier`, desc: "Oublis de pointage suspectés", action: '/admin/time-entries' });

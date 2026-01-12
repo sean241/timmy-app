@@ -497,8 +497,14 @@ export default function EmployeesPage() {
         <div className="relative min-h-screen pb-20 print:pb-0">
             <style jsx global>{`
                 @media print {
-                    body * {
+                    @page {
+                        size: auto;
+                        margin: 0mm;
+                    }
+                    body {
                         visibility: hidden;
+                        margin: 0;
+                        padding: 0;
                     }
                     #printable-badge-modal, #printable-badge-modal * {
                         visibility: visible;
@@ -507,13 +513,19 @@ export default function EmployeesPage() {
                         position: fixed;
                         left: 0;
                         top: 0;
-                        width: 100%;
-                        height: 100%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
+                        width: auto;
+                        height: auto;
+                        margin: 0;
+                        padding: 0;
                         background: white;
+                        display: block;
                         z-index: 9999;
+                    }
+                    #printable-badge-modal > div {
+                        box-shadow: none;
+                        border: 1px solid #ddd;
+                        width: 100%;
+                        max-width: 350px;
                     }
                     .no-print {
                         display: none !important;
@@ -928,7 +940,7 @@ export default function EmployeesPage() {
                                     <div>
                                         <h3 className="text-2xl font-bold text-gray-900">{t.employees.importModal.successTitle}</h3>
                                         <p className="text-gray-500 mt-2">
-                                            <span className="font-bold text-gray-900">{importAnalysis?.newCount}</span> {t.employees.importModal.successDesc}
+                                            <span className="font-bold text-gray-900">{importAnalysis?.newCount}</span> {importAnalysis?.newCount && importAnalysis?.newCount > 1 ? t.employees.importModal.successDesc : t.employees.importModal.successDescSingular}
                                         </p>
                                     </div>
                                     <button
@@ -1209,7 +1221,7 @@ export default function EmployeesPage() {
                                 </div>
 
                                 <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">
-                                    ID: {badgeEmployee.id.split('-')[0]}...
+                                    {companyName}
                                 </div>
                             </div>
 

@@ -374,6 +374,7 @@ export default function AttendanceLogsPage() {
             breakDeduction: number;
             overtimeMinutes: number;
             overtimeStr: string;
+            avatarUrl: string | null;
         }[];
 
         const groups: Record<string, Log[]> = {};
@@ -398,15 +399,24 @@ export default function AttendanceLogsPage() {
             let firstIn: Date | null = null;
             let lastOut: Date | null = null;
 
+            // Track Breaks (Gaps between OUT and IN)
+            let maxGapMinutes = 0;
             let currentIn: Date | null = null;
+            let lastOutTimestamp: number | null = null;
 
             dayLogs.forEach(log => {
                 const t = new Date(log.timestamp);
                 if (log.type === 'IN') {
                     if (!firstIn) firstIn = t;
                     currentIn = t;
+                    // Check gap from last OUT
+                    if (lastOutTimestamp) {
+                        const gap = (t.getTime() - lastOutTimestamp) / 60000;
+                        if (gap > maxGapMinutes) maxGapMinutes = gap;
+                    }
                 } else if (log.type === 'OUT') {
                     lastOut = t;
+                    lastOutTimestamp = t.getTime();
                     if (currentIn) {
                         const diff = (t.getTime() - currentIn.getTime()) / 60000;
                         totalMinutes += diff;
@@ -418,9 +428,16 @@ export default function AttendanceLogsPage() {
             // Auto-Break Deduction Logic
             let breakDeduction = 0;
             const autoBreak = orgSettings?.attendance?.auto_break;
+            const breakDuration = autoBreak?.duration_minutes || 0;
+
             // Check if enabled and if worked enough hours (default 6h)
+            // AND check if NO manual break (gap) of sufficient length was taken
+            const hasTakenManualBreak = maxGapMinutes >= (breakDuration - 5); // 5 min tolerance
+
             if (autoBreak?.enabled && totalMinutes > (autoBreak.threshold_hours || 6) * 60) {
-                breakDeduction = autoBreak.duration_minutes || 0;
+                if (!hasTakenManualBreak) {
+                    breakDeduction = breakDuration;
+                }
             }
 
             const finalMinutes = Math.max(0, totalMinutes - breakDeduction);
@@ -453,7 +470,8 @@ export default function AttendanceLogsPage() {
                 durationStr: `${h}h${m.toString().padStart(2, '0')}`,
                 breakDeduction,
                 overtimeMinutes,
-                overtimeStr
+                overtimeStr,
+                avatarUrl: emp?.avatar_url || null
             };
         }).sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort by date desc
     }, [filteredLogs, view, orgSettings]);
@@ -1039,8 +1057,19 @@ export default function AttendanceLogsPage() {
                                     <tr key={item.key} className="hover:bg-slate-50 transition-colors">
                                         <td className="p-4 font-medium text-slate-700">{item.date.toLocaleDateString()}</td>
                                         <td className="p-4">
-                                            <div className="font-bold text-slate-900">{item.employeeName}</div>
-                                            <div className="text-xs text-slate-500">{item.jobTitle}</div>
+                                            <div className="flex items-center gap-3">
+                                                {item.avatarUrl ? (
+                                                    <img src={item.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
+                                                ) : (
+                                                    <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs border border-slate-200">
+                                                        {item.employeeName.charAt(0)}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <div className="font-bold text-slate-900">{item.employeeName}</div>
+                                                    <div className="text-xs text-slate-500">{item.jobTitle}</div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="p-4 text-slate-600 font-mono text-xs">{item.firstIn?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
                                         <td className="p-4 text-slate-600 font-mono text-xs">{item.lastOut?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '-'}</td>
