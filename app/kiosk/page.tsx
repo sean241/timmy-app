@@ -28,6 +28,7 @@ export default function KioskPage() {
     const [orgName, setOrgName] = useState("Organization");
     const [siteName, setSiteName] = useState("Site");
     const [kioskName, setKioskName] = useState("");
+    const [requirePhoto, setRequirePhoto] = useState(true);
     const [orgLogo, setOrgLogo] = useState<string | null>(null);
     const [isOnline, setIsOnline] = useState(true);
     const [pairedTerminals, setPairedTerminals] = useState<any[]>([]);
@@ -128,11 +129,13 @@ export default function KioskPage() {
             const storedSiteName = await db.local_config.get("site_name");
             const storedOrgLogo = await db.local_config.get("org_logo");
             const storedKioskName = await db.local_config.get("kiosk_name");
+            const storedRequirePhoto = await db.local_config.get("require_photo");
 
             if (storedOrgName?.value && typeof storedOrgName.value === 'string') setOrgName(storedOrgName.value);
             if (storedSiteName?.value && typeof storedSiteName.value === 'string') setSiteName(storedSiteName.value);
             if (storedOrgLogo?.value && typeof storedOrgLogo.value === 'string') setOrgLogo(storedOrgLogo.value);
             if (storedKioskName?.value && typeof storedKioskName.value === 'string') setKioskName(storedKioskName.value);
+            if (storedRequirePhoto && typeof storedRequirePhoto.value === 'boolean') setRequirePhoto(storedRequirePhoto.value);
 
             // SELF-HEALING: If we have an active kiosk but it's not in the terminals table, add it.
             const currentKioskId = (await db.local_config.get("kiosk_id"))?.value as string;
@@ -239,7 +242,7 @@ export default function KioskPage() {
         if (!employee) return;
 
         let photo = "";
-        if (webcamRef.current) {
+        if (requirePhoto && webcamRef.current) {
             const screenshot = webcamRef.current.getScreenshot();
             if (screenshot) photo = screenshot;
         }
@@ -385,7 +388,7 @@ export default function KioskPage() {
             const configResult = await fetchKioskConfig(kioskId);
 
             if (configResult.success && configResult.config) {
-                const { organization_id, site_id, organization_name, site_name, kiosk_name, organization_logo } = configResult.config;
+                const { organization_id, site_id, organization_name, site_name, kiosk_name, organization_logo, require_photo } = configResult.config;
                 hasSuccess = true;
 
                 // Update Local Config
@@ -396,6 +399,7 @@ export default function KioskPage() {
                     { key: "org_logo", value: organization_logo || "" },
                     { key: "site_name", value: site_name },
                     { key: "kiosk_name", value: kiosk_name },
+                    { key: "require_photo", value: require_photo ?? true },
                     { key: "last_sync", value: new Date().toISOString() }
                 ]);
 
@@ -414,6 +418,7 @@ export default function KioskPage() {
                 setOrgName(organization_name || "Organization");
                 setSiteName(site_name || "Site");
                 setKioskName(kiosk_name || "Terminal");
+                setRequirePhoto(require_photo ?? true);
                 if (organization_logo) setOrgLogo(organization_logo);
 
                 // Refresh pairings list
@@ -510,13 +515,37 @@ export default function KioskPage() {
 
 
                         <div className="relative w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-[#1E5562] mb-4 sm:mb-6">
-                            <Webcam
-                                audio={false}
-                                ref={webcamRef}
-                                screenshotFormat="image/jpeg"
-                                videoConstraints={{ facingMode: "user" }}
-                                className="w-full h-full object-cover"
-                            />
+                            {requirePhoto ? (
+                                <Webcam
+                                    audio={false}
+                                    ref={webcamRef}
+                                    screenshotFormat="image/jpeg"
+                                    videoConstraints={{ facingMode: "user" }}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-800 text-white relative overflow-hidden">
+                                    {employee?.avatar_url ? (
+                                        <div className="absolute inset-0">
+                                            <img
+                                                src={employee.avatar_url}
+                                                alt={employee.first_name}
+                                                className="w-full h-full object-cover opacity-90"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-[#0B3B46]/80 via-transparent to-transparent"></div>
+                                        </div>
+                                    ) : (
+                                        <div className="w-40 h-40 rounded-full bg-gradient-to-br from-[#4FD1C5] to-[#0B3B46] flex items-center justify-center font-bold text-7xl text-white shadow-2xl border-4 border-white/20 mb-4 z-10">
+                                            {employee?.first_name?.charAt(0)}
+                                        </div>
+                                    )}
+
+                                    <div className="z-10 mt-auto mb-6 text-center">
+                                        <p className="text-white/60 font-medium text-sm tracking-widest uppercase mb-1">Mode Rapide</p>
+                                        <p className="text-white font-bold text-xl">Photo non requise</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {!msg && (
