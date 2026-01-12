@@ -215,15 +215,24 @@ export default function KiosksPage() {
 
     const handleSync = async (id?: string) => {
         setIsFetching(true);
-        // Simulate sync delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await fetchKiosks();
-        setToast({
-            message: id ? "Terminal synchronisé avec succès" : "Tous les terminaux ont été synchronisés",
-            type: "success"
-        });
-        setIsFetching(false);
-        setActiveMenuId(null);
+        try {
+            // Actualise les données et attend un minimum de 600ms pour que l'utilisateur voie l'action (UX)
+            await Promise.all([
+                fetchKiosks(),
+                new Promise(resolve => setTimeout(resolve, 600))
+            ]);
+
+            setToast({
+                message: id ? "Données du terminal actualisées" : "Statuts des terminaux mis à jour",
+                type: "success"
+            });
+        } catch (error) {
+            console.error("Sync failed:", error);
+            setToast({ message: t.kiosks.toast.error || "Erreur lors de l'actualisation", type: "error" });
+        } finally {
+            setIsFetching(false);
+            setActiveMenuId(null);
+        }
     };
 
     const handleDelete = (id: string) => {
@@ -615,46 +624,52 @@ export default function KiosksPage() {
                                     </div>
 
                                     {/* Badge Toggle */}
-                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 opacity-60 cursor-not-allowed text-gray-400">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                                            <div className="p-2 bg-purple-50 text-purple-300 rounded-lg">
                                                 <CreditCard size={18} />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-gray-900">{t.kiosks.modal.requireBadge}</p>
-                                                <p className="text-xs text-gray-500">QR Code ou NFC sans PIN</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-bold text-gray-500">{t.kiosks.modal.requireBadge}</p>
+                                                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Bientôt</span>
+                                                </div>
+                                                <p className="text-xs text-gray-400">QR Code ou NFC sans PIN</p>
                                             </div>
                                         </div>
-                                        <label className="relative inline-flex items-center cursor-pointer">
+                                        <label className="relative inline-flex items-center cursor-not-allowed">
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"
-                                                checked={formData.require_badge_scan}
-                                                onChange={(e) => setFormData({ ...formData, require_badge_scan: e.target.checked })}
+                                                checked={false}
+                                                disabled
                                             />
-                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F4C5C]"></div>
+                                            <div className="w-11 h-6 bg-gray-100 peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                                         </label>
                                     </div>
 
                                     {/* Signature Toggle */}
-                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 opacity-60 cursor-not-allowed text-gray-400">
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+                                            <div className="p-2 bg-orange-50 text-orange-300 rounded-lg">
                                                 <PenTool size={18} />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-gray-900">{t.kiosks.modal.requireSignature}</p>
-                                                <p className="text-xs text-gray-500">Signature tactile requise</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-bold text-gray-500">{t.kiosks.modal.requireSignature}</p>
+                                                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Bientôt</span>
+                                                </div>
+                                                <p className="text-xs text-gray-400">Signature tactile requise</p>
                                             </div>
                                         </div>
-                                        <label className="relative inline-flex items-center cursor-pointer">
+                                        <label className="relative inline-flex items-center cursor-not-allowed">
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"
-                                                checked={formData.require_signature}
-                                                onChange={(e) => setFormData({ ...formData, require_signature: e.target.checked })}
+                                                checked={false}
+                                                disabled
                                             />
-                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F4C5C]"></div>
+                                            <div className="w-11 h-6 bg-gray-100 peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                                         </label>
                                     </div>
                                 </div>
