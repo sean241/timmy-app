@@ -315,125 +315,142 @@ export default function KiosksPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {kiosks.map((kiosk) => (
-                                    <tr key={kiosk.id} className="hover:bg-gray-50/50 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${kiosk.status === 'ONLINE' ? 'bg-green-100 text-green-600' :
-                                                    kiosk.status === 'OFFLINE' ? 'bg-gray-100 text-gray-500' :
-                                                        'bg-yellow-100 text-yellow-600'
-                                                    }`}>
-                                                    <Tablet size={20} />
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-gray-900">{kiosk.name}</div>
-                                                    <div className="text-sm text-gray-500 flex items-center gap-1">
-                                                        <Smartphone size={12} />
-                                                        {kiosk.sites?.name || "No Site"}
+                                {kiosks.map((kiosk) => {
+                                    // Status Logic: Offline if > 5min silence, unless Pending/Revoked
+                                    const isRecent = kiosk.last_heartbeat_at && (new Date().getTime() - new Date(kiosk.last_heartbeat_at).getTime() < 5 * 60 * 1000);
+                                    let displayStatus: "ONLINE" | "OFFLINE" | "PENDING" | "REVOKED" = kiosk.status;
+                                    if (kiosk.status !== 'PENDING' && kiosk.status !== 'REVOKED') {
+                                        // Trust heartbeat for Online/Offline availability
+                                        displayStatus = isRecent ? 'ONLINE' : 'OFFLINE';
+                                    }
+
+                                    return (
+                                        <tr key={kiosk.id} className="hover:bg-gray-50/50 transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${displayStatus === 'ONLINE' ? 'bg-green-100 text-green-600' :
+                                                        displayStatus === 'OFFLINE' ? 'bg-gray-100 text-gray-500' :
+                                                            'bg-yellow-100 text-yellow-600'
+                                                        }`}>
+                                                        <Tablet size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-gray-900">{kiosk.name}</div>
+                                                        <div className="text-sm text-gray-500 flex items-center gap-1">
+                                                            <Smartphone size={12} />
+                                                            {kiosk.sites?.name || "No Site"}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div
-                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:border-gray-300 transition-colors group/code"
-                                                onClick={(e) => { e.stopPropagation(); handleOpenPairing(kiosk); }}
-                                                title="Cliquez pour afficher le code de jumelage"
-                                            >
-                                                <span className="font-mono font-bold text-gray-700 tracking-widest text-sm">
-                                                    ••••••
-                                                </span>
-                                                <Wifi size={14} className="text-gray-400 group-hover/code:text-[#0F4C5C] transition-colors" />
-                                            </div>
-                                        </td>
-
-
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                {kiosk.require_photo && (
-                                                    <Tooltip content={t.kiosks.modal.requirePhoto}>
-                                                        <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md cursor-default">
-                                                            <Camera size={16} />
-                                                        </div>
-                                                    </Tooltip>
-                                                )}
-                                                {kiosk.require_badge_scan && (
-                                                    <Tooltip content={t.kiosks.modal.requireBadge}>
-                                                        <div className="p-1.5 bg-purple-50 text-purple-600 rounded-md cursor-default">
-                                                            <CreditCard size={16} />
-                                                        </div>
-                                                    </Tooltip>
-                                                )}
-                                                {kiosk.require_signature && (
-                                                    <Tooltip content={t.kiosks.modal.requireSignature}>
-                                                        <div className="p-1.5 bg-orange-50 text-orange-600 rounded-md cursor-default">
-                                                            <PenTool size={16} />
-                                                        </div>
-                                                    </Tooltip>
-                                                )}
-                                                {!kiosk.require_photo && !kiosk.require_badge_scan && !kiosk.require_signature && (
-                                                    <span className="text-gray-400 text-sm">-</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${kiosk.status === 'ONLINE' ? 'bg-green-50 text-green-700 border-green-100' :
-                                                kiosk.status === 'OFFLINE' ? 'bg-gray-50 text-gray-600 border-gray-100' :
-                                                    'bg-yellow-50 text-yellow-700 border-yellow-100'
-                                                }`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${kiosk.status === 'ONLINE' ? 'bg-green-500' :
-                                                    kiosk.status === 'OFFLINE' ? 'bg-gray-400' :
-                                                        'bg-yellow-500'
-                                                    }`}></span>
-                                                {kiosk.status === 'ONLINE' ? t.kiosks.status.ONLINE :
-                                                    kiosk.status === 'PENDING' ? t.kiosks.status.PENDING :
-                                                        t.kiosks.status.OFFLINE}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
-                                            {kiosk.last_heartbeat_at
-                                                ? new Date(kiosk.last_heartbeat_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                                : "--:--"}
-                                        </td>
-                                        <td className="px-6 py-4 text-right relative">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setActiveMenuId(activeMenuId === kiosk.id ? null : kiosk.id);
-                                                }}
-                                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                            >
-                                                <MoreVertical size={18} />
-                                            </button>
-
-                                            {activeMenuId === kiosk.id && (
-                                                <div className="absolute right-8 top-0 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100 text-left">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleSync(kiosk.id); }}
-                                                        className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                    >
-                                                        <RefreshCw size={16} />
-                                                        {t.kiosks.sync}
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleOpenEdit(kiosk); }}
-                                                        className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                    >
-                                                        <PenTool size={16} />
-                                                        {t.kiosks.modal.update}
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleDelete(kiosk.id); }}
-                                                        className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                        {t.kiosks.status.REVOKED}
-                                                    </button>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:border-gray-300 transition-colors group/code"
+                                                    onClick={(e) => { e.stopPropagation(); handleOpenPairing(kiosk); }}
+                                                    title="Cliquez pour afficher le code de jumelage"
+                                                >
+                                                    <span className="font-mono font-bold text-gray-700 tracking-widest text-sm">
+                                                        ••••••
+                                                    </span>
+                                                    <Wifi size={14} className="text-gray-400 group-hover/code:text-[#0F4C5C] transition-colors" />
                                                 </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+
+
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    {kiosk.require_photo && (
+                                                        <Tooltip content={t.kiosks.modal.requirePhoto}>
+                                                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md cursor-default">
+                                                                <Camera size={16} />
+                                                            </div>
+                                                        </Tooltip>
+                                                    )}
+                                                    {kiosk.require_badge_scan && (
+                                                        <Tooltip content={t.kiosks.modal.requireBadge}>
+                                                            <div className="p-1.5 bg-purple-50 text-purple-600 rounded-md cursor-default">
+                                                                <CreditCard size={16} />
+                                                            </div>
+                                                        </Tooltip>
+                                                    )}
+                                                    {kiosk.require_signature && (
+                                                        <Tooltip content={t.kiosks.modal.requireSignature}>
+                                                            <div className="p-1.5 bg-orange-50 text-orange-600 rounded-md cursor-default">
+                                                                <PenTool size={16} />
+                                                            </div>
+                                                        </Tooltip>
+                                                    )}
+                                                    {!kiosk.require_photo && !kiosk.require_badge_scan && !kiosk.require_signature && (
+                                                        <span className="text-gray-400 text-sm">-</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${displayStatus === 'ONLINE' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                    displayStatus === 'OFFLINE' ? 'bg-gray-50 text-gray-600 border-gray-100' :
+                                                        'bg-yellow-50 text-yellow-700 border-yellow-100'
+                                                    }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${displayStatus === 'ONLINE' ? 'bg-green-500' :
+                                                        displayStatus === 'OFFLINE' ? 'bg-gray-400' :
+                                                            'bg-yellow-500'
+                                                        }`}></span>
+                                                    {displayStatus === 'ONLINE' ? t.kiosks.status.ONLINE :
+                                                        displayStatus === 'PENDING' ? t.kiosks.status.PENDING :
+                                                            t.kiosks.status.OFFLINE}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">
+                                                {kiosk.last_heartbeat_at ? (
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-gray-900">
+                                                            {new Date(kiosk.last_heartbeat_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400">
+                                                            {new Date(kiosk.last_heartbeat_at).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                        </span>
+                                                    </div>
+                                                ) : "--:--"}
+                                            </td>
+                                            <td className="px-6 py-4 text-right relative">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveMenuId(activeMenuId === kiosk.id ? null : kiosk.id);
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                                >
+                                                    <MoreVertical size={18} />
+                                                </button>
+
+                                                {activeMenuId === kiosk.id && (
+                                                    <div className="absolute right-8 top-0 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100 text-left">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleSync(kiosk.id); }}
+                                                            className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                        >
+                                                            <RefreshCw size={16} />
+                                                            {t.kiosks.sync}
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(kiosk); }}
+                                                            className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                        >
+                                                            <PenTool size={16} />
+                                                            {t.kiosks.modal.update}
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleDelete(kiosk.id); }}
+                                                            className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                            {t.kiosks.status.REVOKED}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
