@@ -1171,7 +1171,7 @@ export default function AttendanceLogsPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" >
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-sm" >
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
