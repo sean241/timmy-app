@@ -84,9 +84,15 @@ export default function AdminLoginPage() {
             <div className="w-full lg:w-1/3 flex flex-col justify-between p-8 lg:p-12 xl:p-16 shadow-2xl z-10 relative">
 
                 {/* Logo */}
-                <div className="mt-12 mb-12 flex justify-center items-center gap-3">
-                    <div className="w-10 h-10 bg-[#0F4C5C] rounded-md flex items-center justify-center text-white font-bold text-xl">T</div>
-                    <span className="text-2xl font-bold text-[#0F4C5C] tracking-tight">Timmy</span>
+                <div className="mt-12 mb-12 flex justify-center items-center">
+                    <Image
+                        src="/images/timmy_logo_dark.png"
+                        width={180}
+                        height={60}
+                        alt="Timmy"
+                        className="object-contain"
+                        priority
+                    />
                 </div>
 
                 {/* Form Container */}
