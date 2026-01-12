@@ -1061,7 +1061,8 @@ export default function PlanningPage() {
                                             key={dayIndex}
                                             onDragOver={handleDragOver}
                                             onDrop={(e) => handleDrop(e, dayIndex, unassignedEmployeeId)}
-                                            className="p-1 min-h-[80px] hover:bg-amber-50/30 transition-colors relative"
+                                            onClick={() => openAddModal(dayIndex, unassignedEmployeeId)}
+                                            className="p-1 min-h-[80px] hover:bg-amber-50/30 transition-colors relative cursor-pointer"
                                         >
                                             <div className="flex flex-wrap gap-1">
                                                 {shifts.map(shift => (
@@ -1166,7 +1167,8 @@ export default function PlanningPage() {
                                                     key={dayIndex}
                                                     onDragOver={handleDragOver}
                                                     onDrop={(e) => handleDrop(e, dayIndex, employee.id)}
-                                                    className={`p-2 min-h-[100px] relative group hover:bg-gray-50 transition-colors ${hasConflict ? 'bg-red-50/50' : ''}`}
+                                                    onClick={() => openAddModal(dayIndex, employee.id)}
+                                                    className={`p-2 min-h-[100px] relative group hover:bg-gray-50 transition-colors ${hasConflict ? 'bg-red-50/50' : ''} cursor-pointer`}
                                                 >
                                                     <div className="space-y-2">
                                                         {shifts.map(shift => (
