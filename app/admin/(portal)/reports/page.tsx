@@ -90,8 +90,8 @@ export default function ReportsPage() {
                     <button
                         onClick={togglePeriodStatus}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm ${isPeriodClosed
-                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                : "bg-white border border-red-200 text-red-600 hover:bg-red-50"
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : "bg-white border border-red-200 text-red-600 hover:bg-red-50"
                             }`}
                     >
                         {isPeriodClosed ? <Lock size={16} /> : <Lock size={16} />}
