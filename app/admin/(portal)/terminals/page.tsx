@@ -378,12 +378,12 @@ export default function KiosksPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${kiosk.status === 'ONLINE' ? 'bg-green-50 text-green-700 border-green-100' :
-                                                    kiosk.status === 'OFFLINE' ? 'bg-gray-50 text-gray-600 border-gray-100' :
-                                                        'bg-yellow-50 text-yellow-700 border-yellow-100'
+                                                kiosk.status === 'OFFLINE' ? 'bg-gray-50 text-gray-600 border-gray-100' :
+                                                    'bg-yellow-50 text-yellow-700 border-yellow-100'
                                                 }`}>
                                                 <span className={`w-1.5 h-1.5 rounded-full ${kiosk.status === 'ONLINE' ? 'bg-green-500' :
-                                                        kiosk.status === 'OFFLINE' ? 'bg-gray-400' :
-                                                            'bg-yellow-500'
+                                                    kiosk.status === 'OFFLINE' ? 'bg-gray-400' :
+                                                        'bg-yellow-500'
                                                     }`}></span>
                                                 {kiosk.status === 'ONLINE' ? t.kiosks.status.ONLINE :
                                                     kiosk.status === 'PENDING' ? t.kiosks.status.PENDING :
