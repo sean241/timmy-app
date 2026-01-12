@@ -116,6 +116,9 @@ export async function fetchKioskConfig(kioskId: string) {
             name,
             organization_id,
             site_id,
+            require_photo,
+            require_badge_scan,
+            require_signature,
             organizations ( name, settings, logo_url ),
             sites ( name )
         `)
@@ -140,7 +143,10 @@ export async function fetchKioskConfig(kioskId: string) {
             organization_logo: (data.organizations as any)?.logo_url,
             site_name: (data.sites as any)?.name,
             organization_id: data.organization_id,
-            site_id: data.site_id
+            site_id: data.site_id,
+            require_photo: data.require_photo,
+            require_badge_scan: data.require_badge_scan,
+            require_signature: data.require_signature
         }
     }
 }
