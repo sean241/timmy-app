@@ -1061,7 +1061,8 @@ export default function PlanningPage() {
                                             key={dayIndex}
                                             onDragOver={handleDragOver}
                                             onDrop={(e) => handleDrop(e, dayIndex, unassignedEmployeeId)}
-                                            className="p-1 min-h-[80px] hover:bg-amber-50/30 transition-colors relative"
+                                            onClick={() => openAddModal(dayIndex, unassignedEmployeeId)}
+                                            className="p-1 min-h-[80px] hover:bg-amber-50/30 transition-colors relative cursor-pointer group"
                                         >
                                             <div className="flex flex-wrap gap-1">
                                                 {shifts.map(shift => (
@@ -1076,8 +1077,8 @@ export default function PlanningPage() {
                                             </div>
                                             {/* Hint for empty state */}
                                             {shifts.length === 0 && (
-                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100">
-                                                    <span className="text-[10px] text-gray-300 italic">Drop here</span>
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Plus className="text-amber-400 opacity-50" size={24} />
                                                 </div>
                                             )}
                                         </div>
@@ -1166,9 +1167,13 @@ export default function PlanningPage() {
                                                     key={dayIndex}
                                                     onDragOver={handleDragOver}
                                                     onDrop={(e) => handleDrop(e, dayIndex, employee.id)}
-                                                    className={`p-2 min-h-[100px] relative group hover:bg-gray-50 transition-colors ${hasConflict ? 'bg-red-50/50' : ''}`}
+                                                    onClick={() => openAddModal(dayIndex, employee.id)}
+                                                    className={`p-2 min-h-[100px] relative group hover:bg-gray-50 transition-colors ${hasConflict ? 'bg-red-50/50' : ''} cursor-pointer`}
                                                 >
-                                                    <div className="space-y-2">
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-0">
+                                                        <Plus className="text-gray-300" size={24} />
+                                                    </div>
+                                                    <div className="space-y-2 relative z-10">
                                                         {shifts.map(shift => (
                                                             <ShiftCard
                                                                 key={shift.id}
@@ -1177,12 +1182,6 @@ export default function PlanningPage() {
                                                                 onClick={() => openEditModal(shift, employee.id)}
                                                             />
                                                         ))}
-                                                        <button
-                                                            onClick={() => openAddModal(dayIndex, employee.id)}
-                                                            className="w-full py-1 text-xs text-gray-300 hover:text-gray-500 hover:bg-gray-200 rounded border border-transparent hover:border-gray-300 border-dashed transition-all opacity-0 group-hover:opacity-100 print:hidden"
-                                                        >
-                                                            +
-                                                        </button>
                                                     </div>
                                                 </div>
                                             );
