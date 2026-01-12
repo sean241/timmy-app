@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from "@/lib/supabase";
-import { getSecureUrl } from "@/lib/storage";
+import { getSignedUrlAction } from "@/app/actions/storage";
 import { useLanguage } from '@/app/context/LanguageContext';
 import {
     Search, Calendar, Download, Plus,
@@ -343,7 +343,7 @@ export default function AttendanceLogsPage() {
             const newUrls: Record<string, string> = {};
             await Promise.all(logsWithPhotos.map(async (log) => {
                 if (log.photo && !secureUrlMap[log.id]) {
-                    const url = await getSecureUrl(log.photo);
+                    const url = await getSignedUrlAction(log.photo);
                     if (url) {
                         newUrls[log.id] = url;
                     }
