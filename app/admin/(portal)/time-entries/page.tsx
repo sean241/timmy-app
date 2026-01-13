@@ -1291,10 +1291,35 @@ export default function AttendanceLogsPage() {
                                                     {/* LATE INDICATOR */}
                                                     {(() => {
                                                         if (log.type !== 'IN') return null;
-                                                        // Default rules if settings not loaded yet
-                                                        // Ideally we use orgSettings.planning.start_time, but per analysis it might be implicit
-                                                        // Let's assume 08:00 AM start if not present
-                                                        const startStr = orgSettings?.planning?.start_time || "08:00";
+
+                                                        // 0. Ensure this is the FIRST check-in of the day
+                                                        // We scan 'logs' (full history) to see if there is an EARLIER 'IN' log for the same employee on the same day.
+                                                        const hasEarlierLog = logs.some(other =>
+                                                            other.employee_id === log.employee_id &&
+                                                            other.type === 'IN' &&
+                                                            other.id !== log.id &&
+                                                            new Date(other.timestamp).toDateString() === logDate.toDateString() &&
+                                                            new Date(other.timestamp) < logDate
+                                                        );
+
+                                                        if (hasEarlierLog) return null;
+
+                                                        // 1. Determine Expected Start Time
+                                                        let startStr = orgSettings?.planning?.start_time || "08:00";
+
+                                                        // Check for specific shift
+                                                        const empShift = shifts.find(s => {
+                                                            const sDate = new Date(s.start_time);
+                                                            return s.employee_id === log.employee_id &&
+                                                                sDate.getDate() === logDate.getDate() &&
+                                                                sDate.getMonth() === logDate.getMonth() &&
+                                                                sDate.getFullYear() === logDate.getFullYear();
+                                                        });
+
+                                                        if (empShift) {
+                                                            startStr = new Date(empShift.start_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                                                        }
+
                                                         const tolerance = orgSettings?.attendance?.tolerance_minutes || 5;
 
                                                         const [startH, startM] = startStr.split(':').map(Number);
@@ -1310,7 +1335,7 @@ export default function AttendanceLogsPage() {
                                                                 <div className="relative group/late">
                                                                     <Clock className="h-4 w-4 text-red-500 cursor-help" />
                                                                     <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg opacity-0 group-hover/late:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                                                                        Late arrival (+{diff} min)
+                                                                        Arrivée tardive (+{diff} min)
                                                                     </div>
                                                                 </div>
                                                             );
