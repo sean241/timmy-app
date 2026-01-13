@@ -89,6 +89,7 @@ export default function KiosksPage() {
                 .from('kiosks')
                 .select('*, sites(name)')
                 .eq('organization_id', orgId)
+                .neq('status', 'REVOKED') // Hide revoked terminals
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -153,6 +154,44 @@ export default function KiosksPage() {
             code += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         return code;
+    };
+
+    const handleRegenerateCode = async (kioskId: string) => {
+        const newCode = generatePairingCode();
+        setIsLoading(true);
+        try {
+            const { error } = await supabase
+                .from('kiosks')
+                .update({
+                    pairing_code: newCode,
+                    status: 'PENDING'  // <--- IMPORTANT: Reset status to allow pairing
+                })
+                .eq('id', kioskId);
+
+            if (error) throw error;
+
+            // Update local state
+            setKiosks(prev => prev.map(k => k.id === kioskId ? { ...k, pairing_code: newCode, status: 'PENDING' } : k));
+
+            // Update modal state if open
+            if (pairingModal.isOpen && pairingModal.kiosk?.id === kioskId) {
+                setPairingModal(prev => ({
+                    ...prev,
+                    kiosk: {
+                        ...prev.kiosk!,
+                        pairing_code: newCode,
+                        status: 'PENDING'
+                    }
+                }));
+            }
+
+            setToast({ message: "Nouveau code généré avec succès (Terminal en attente)", type: "success" });
+        } catch (error) {
+            console.error("Error regenerating code:", error);
+            setToast({ message: t.kiosks.toast.error, type: "error" });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -238,17 +277,17 @@ export default function KiosksPage() {
     const handleDelete = (id: string) => {
         setConfirmModal({
             isOpen: true,
-            title: t.kiosks.confirm.deleteTitle,
-            message: t.kiosks.confirm.deleteMsg,
+            title: t.kiosks.confirm.deleteTitle, // "Révoquer ce terminal ?" (Need to check translation later if title needs update)
+            message: "Le terminal sera archivé et ne pourra plus se connecter. L'historique sera conservé.",
             onConfirm: async () => {
                 try {
                     const { error } = await supabase
                         .from('kiosks')
-                        .delete()
+                        .update({ status: 'REVOKED' }) // Soft Delete
                         .eq('id', id);
 
                     if (error) throw error;
-                    setToast({ message: t.kiosks.toast.deleteSuccess, type: "success" });
+                    setToast({ message: "Terminal révoqué avec succès", type: "success" });
                     fetchKiosks();
                 } catch (error) {
                     console.error("Error deleting kiosk:", error);
@@ -324,7 +363,7 @@ export default function KiosksPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {kiosks.map((kiosk) => {
+                                {kiosks.map((kiosk, index) => {
                                     // Status Logic: Offline if > 5min silence, unless Pending/Revoked
                                     const isRecent = kiosk.last_heartbeat_at && (new Date().getTime() - new Date(kiosk.last_heartbeat_at).getTime() < 5 * 60 * 1000);
                                     let displayStatus: "ONLINE" | "OFFLINE" | "PENDING" | "REVOKED" = kiosk.status;
@@ -334,7 +373,7 @@ export default function KiosksPage() {
                                     }
 
                                     return (
-                                        <tr key={kiosk.id} className="hover:bg-gray-50/50 transition-colors group">
+                                        <tr key={kiosk.id} className={`hover:bg-gray-50/50 transition-colors group ${activeMenuId === kiosk.id ? "relative z-20" : ""}`}>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${displayStatus === 'ONLINE' ? 'bg-green-100 text-green-600' :
@@ -432,7 +471,7 @@ export default function KiosksPage() {
                                                 </button>
 
                                                 {activeMenuId === kiosk.id && (
-                                                    <div className="absolute right-8 top-0 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100 text-left">
+                                                    <div className={`absolute right-8 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-100 text-left ${index >= kiosks.length - 2 ? "bottom-0 origin-bottom-right" : "top-0"}`}>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleSync(kiosk.id); }}
                                                             className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
@@ -504,6 +543,17 @@ export default function KiosksPage() {
                                 className="w-full px-4 py-3 bg-[#0F4C5C] text-white rounded-lg font-bold hover:bg-[#0a3641] transition-colors shadow-sm"
                             >
                                 Terminé
+                            </button>
+
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRegenerateCode(pairingModal.kiosk!.id);
+                                }}
+                                className="w-full mt-3 px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                <RefreshCw size={14} />
+                                Générer un nouveau code
                             </button>
                         </div>
                     </div>

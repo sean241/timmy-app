@@ -7,6 +7,7 @@ import Webcam from "react-webcam";
 import Image from "next/image";
 import * as XLSX from 'xlsx';
 import QRCode from "react-qr-code";
+import * as htmlToImage from 'html-to-image';
 import Toast from "@/components/Toast";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { uploadFile, BUCKETS } from "@/lib/storage";
@@ -489,16 +490,47 @@ export default function EmployeesPage() {
         setIsWebcamOpen(false);
     };
 
-    const handlePrintBadge = () => {
-        window.print();
+    const handleDownloadBadge = async () => {
+        const node = document.getElementById('printable-badge-modal');
+        if (!node) return;
+
+        // Hide actions for the screenshot
+        const actions = node.querySelector('.no-print') as HTMLElement;
+        if (actions) actions.style.display = 'none';
+        // Ensure close button is handled if it exists, though it's likely outside or handled by z-index
+
+        try {
+            const dataUrl = await htmlToImage.toPng(node.children[0] as HTMLElement, {
+                backgroundColor: '#ffffff',
+                style: {
+                    borderRadius: '16px' // Match rounded-2xl
+                }
+            });
+
+            const link = document.createElement('a');
+            link.download = `badge_${badgeEmployee?.last_name || 'nom'}_${badgeEmployee?.first_name || 'prenom'}.png`.toLowerCase();
+            link.href = dataUrl;
+            link.click();
+        } catch (error) {
+            console.error('Error generating badge image:', error);
+            setToast({ type: 'error', message: "Erreur lors du téléchargement du badge" });
+        } finally {
+            if (actions) actions.style.display = '';
+        }
     };
 
     return (
         <div className="relative min-h-screen pb-20 print:pb-0">
             <style jsx global>{`
                 @media print {
-                    body * {
+                    @page {
+                        size: auto;
+                        margin: 0mm;
+                    }
+                    body {
                         visibility: hidden;
+                        margin: 0;
+                        padding: 0;
                     }
                     #printable-badge-modal, #printable-badge-modal * {
                         visibility: visible;
@@ -507,13 +539,19 @@ export default function EmployeesPage() {
                         position: fixed;
                         left: 0;
                         top: 0;
-                        width: 100%;
-                        height: 100%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
+                        width: auto;
+                        height: auto;
+                        margin: 0;
+                        padding: 0;
                         background: white;
+                        display: block;
                         z-index: 9999;
+                    }
+                    #printable-badge-modal > div {
+                        box-shadow: none;
+                        border: 1px solid #ddd;
+                        width: 100%;
+                        max-width: 350px;
                     }
                     .no-print {
                         display: none !important;
@@ -885,15 +923,15 @@ export default function EmployeesPage() {
                                         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-2 flex items-center gap-2">
                                             <FileText size={16} className="text-gray-500" />
                                             <span className="text-sm text-gray-700">
-                                                <span className="font-bold">{importAnalysis.total}</span> {t.employees.importModal.linesDetected}
+                                                <span className="font-bold">{importAnalysis.total}</span> {importAnalysis.total > 1 ? t.employees.importModal.linesDetected : t.employees.importModal.linesDetectedSingular}
                                             </span>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
                                                 <span className="block text-2xl font-bold text-green-700">{importAnalysis.newCount}</span>
-                                                <span className="text-xs text-green-800 font-medium">{t.employees.importModal.newEmployees}</span>
-                                                <span className="text-[10px] text-green-600 block mt-1">{t.employees.importModal.readyImport}</span>
+                                                <span className="text-xs text-green-800 font-medium">{importAnalysis.newCount > 1 ? t.employees.importModal.newEmployees : t.employees.importModal.newEmployeesSingular}</span>
+                                                <span className="text-[10px] text-green-600 block mt-1">{importAnalysis.newCount > 1 ? t.employees.importModal.readyImport : t.employees.importModal.readyImportSingular}</span>
                                             </div>
                                             <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg">
                                                 <span className="block text-2xl font-bold text-orange-700">{importAnalysis.duplicateCount}</span>
@@ -904,8 +942,8 @@ export default function EmployeesPage() {
 
                                         <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
                                             <ul className="list-disc pl-5 space-y-1">
-                                                <li>{importAnalysis.withPin} {t.employees.importModal.hasPin}</li>
-                                                <li>{importAnalysis.autoPin} {t.employees.importModal.autoPin}</li>
+                                                <li>{importAnalysis.withPin} {importAnalysis.withPin > 1 ? t.employees.importModal.hasPin : t.employees.importModal.hasPinSingular}</li>
+                                                <li>{importAnalysis.autoPin} {importAnalysis.autoPin > 1 ? t.employees.importModal.autoPin : t.employees.importModal.autoPinSingular}</li>
                                             </ul>
                                         </div>
 
@@ -913,7 +951,7 @@ export default function EmployeesPage() {
                                             onClick={confirmImport}
                                             className="w-full bg-[#0F4C5C] text-white py-3 rounded-xl font-bold hover:bg-[#0F4C5C]/90 transition-colors"
                                         >
-                                            {t.employees.importModal.importBtn.replace('{count}', importAnalysis.newCount.toString())}
+                                            {(importAnalysis.newCount > 1 ? t.employees.importModal.importBtn : t.employees.importModal.importBtnSingular).replace('{count}', importAnalysis.newCount.toString())}
                                         </button>
                                     </div>
                                 </div>
@@ -928,7 +966,7 @@ export default function EmployeesPage() {
                                     <div>
                                         <h3 className="text-2xl font-bold text-gray-900">{t.employees.importModal.successTitle}</h3>
                                         <p className="text-gray-500 mt-2">
-                                            <span className="font-bold text-gray-900">{importAnalysis?.newCount}</span> {t.employees.importModal.successDesc}
+                                            <span className="font-bold text-gray-900">{importAnalysis?.newCount}</span> {importAnalysis?.newCount && importAnalysis?.newCount > 1 ? t.employees.importModal.successDesc : t.employees.importModal.successDescSingular}
                                         </p>
                                     </div>
                                     <button
@@ -1181,7 +1219,8 @@ export default function EmployeesPage() {
                         <div className="p-0 bg-white flex flex-col items-center text-center relative overflow-hidden">
                             {/* Header */}
                             <div className="w-full bg-[#0F4C5C] p-6 text-white relative">
-                                <h2 className="text-2xl font-bold m-0">Timmy</h2>
+                                {/* Timmy text removed as requested */}
+                                <div className="h-8"></div>
                                 <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-24 h-24 rounded-full bg-white p-1 shadow-lg">
                                     {badgeEmployee.avatar_url ? (
                                         <Image src={badgeEmployee.avatar_url} alt="Avatar" width={96} height={96} className="w-full h-full rounded-full object-cover bg-gray-100" unoptimized />
@@ -1209,7 +1248,7 @@ export default function EmployeesPage() {
                                 </div>
 
                                 <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">
-                                    ID: {badgeEmployee.id.split('-')[0]}...
+                                    {companyName}
                                 </div>
                             </div>
 
@@ -1228,11 +1267,11 @@ export default function EmployeesPage() {
                                 {t.employees.badge.cancel}
                             </button>
                             <button
-                                onClick={handlePrintBadge}
+                                onClick={handleDownloadBadge}
                                 className="flex-1 px-4 py-2 bg-[#0F4C5C] text-white font-bold rounded-lg hover:bg-[#0a3642] transition-colors flex items-center justify-center gap-2"
                             >
-                                <Printer size={18} />
-                                {t.employees.badge.print}
+                                <Download size={18} />
+                                Télécharger
                             </button>
                         </div>
                     </div>
