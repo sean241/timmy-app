@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Loader2, Mail, Shield, Users, FileText, Clock, CheckCircle, Send, Trash2 } from "lucide-react";
+import { Plus, Loader2, Mail, Shield, Users, FileText, Clock, CheckCircle, Send, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/app/context/LanguageContext";
 import Toast from "@/components/Toast";
@@ -258,70 +258,82 @@ export default function TeamSettings({ organizationId }: { organizationId: strin
             {isInviteModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-gray-900">{t.settings.team.inviteModal.title}</h3>
-                            <button onClick={() => setIsInviteModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                                <Trash2 size={20} className="rotate-45" />
+                        {/* HEADER */}
+                        <div className="bg-[#0F4C5C] px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3">
+                                <Plus className="h-5 w-5 text-[#FFC107]" strokeWidth={3} />
+                                <h3 className="text-lg font-bold text-white tracking-wide">
+                                    {t.settings.team.inviteModal.title}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setIsInviteModalOpen(false)}
+                                className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+                            >
+                                <X size={20} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleInvite} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1">{t.settings.team.inviteModal.email}</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                    <input
-                                        name="email"
-                                        type="email"
-                                        required
-                                        placeholder="collegue@entreprise.com"
-                                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#0F4C5C] outline-none"
-                                        autoFocus
-                                    />
+                        <form onSubmit={handleInvite}>
+                            <div className="p-6 space-y-5">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.settings.team.inviteModal.email}</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            name="email"
+                                            type="email"
+                                            required
+                                            placeholder="collegue@entreprise.com"
+                                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 text-slate-700 focus:border-[#0F4C5C] focus:ring-1 focus:ring-[#0F4C5C] outline-none bg-white font-medium placeholder:font-normal"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-800 mb-1.5">{t.settings.team.inviteModal.role}</label>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <label className="flex items-start gap-4 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors bg-white">
+                                            <input type="radio" name="role" value="MANAGER" defaultChecked className="mt-1 text-[#0F4C5C] focus:ring-[#0F4C5C] w-4 h-4" />
+                                            <div>
+                                                <div className="font-bold text-slate-900 text-sm mb-0.5">{t.settings.team.roles.manager}</div>
+                                                <div className="text-xs text-slate-500 leading-relaxed">{t.settings.team.roles.managerDesc}</div>
+                                            </div>
+                                        </label>
+                                        <label className="flex items-start gap-4 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors bg-white">
+                                            <input type="radio" name="role" value="ACCOUNTANT" className="mt-1 text-[#0F4C5C] focus:ring-[#0F4C5C] w-4 h-4" />
+                                            <div>
+                                                <div className="font-bold text-slate-900 text-sm mb-0.5">{t.settings.team.roles.accountant}</div>
+                                                <div className="text-xs text-slate-500 leading-relaxed">{t.settings.team.roles.accountantDesc}</div>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1">{t.settings.team.inviteModal.role}</label>
-                                <div className="grid grid-cols-1 gap-2">
-                                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                        <input type="radio" name="role" value="MANAGER" defaultChecked className="mt-1 text-[#0F4C5C] focus:ring-[#0F4C5C]" />
-                                        <div>
-                                            <div className="font-bold text-gray-900 text-sm">{t.settings.team.roles.manager}</div>
-                                            <div className="text-xs text-gray-500">{t.settings.team.roles.managerDesc}</div>
-                                        </div>
-                                    </label>
-                                    <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                        <input type="radio" name="role" value="ACCOUNTANT" className="mt-1 text-[#0F4C5C] focus:ring-[#0F4C5C]" />
-                                        <div>
-                                            <div className="font-bold text-gray-900 text-sm">{t.settings.team.roles.accountant}</div>
-                                            <div className="text-xs text-gray-500">{t.settings.team.roles.accountantDesc}</div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
+                            {/* FOOTER */}
+                            <div className="p-6 pt-0 bg-white rounded-b-xl shrink-0 flex gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setIsInviteModalOpen(false)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-bold text-sm hover:bg-gray-50"
+                                    className="flex-1 px-4 py-3.5 rounded-xl font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
                                 >
                                     {t.settings.team.inviteModal.cancel}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={inviteStatus === "sending"}
-                                    className="flex-1 bg-[#0F4C5C] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#0a3641] disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-[2] bg-[#FFC107] hover:bg-[#e0a800] text-[#0F4C5C] font-extrabold text-base py-3.5 rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-70 flex justify-center items-center gap-2"
                                 >
                                     {inviteStatus === "sending" ? (
                                         <>
-                                            <Loader2 size={16} className="animate-spin" />
+                                            <Loader2 size={18} className="animate-spin" />
                                             {t.settings.team.inviteModal.sending}
                                         </>
                                     ) : inviteStatus === "success" ? (
                                         <>
-                                            <CheckCircle size={16} />
+                                            <CheckCircle size={18} />
                                             {t.settings.team.inviteModal.sent}
                                         </>
                                     ) : (

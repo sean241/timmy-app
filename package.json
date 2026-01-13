@@ -1,6 +1,6 @@
 {
   "name": "timmy",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@react-email/components": "^1.0.4",
+    "@react-email/render": "^2.0.2",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.87.0",
     "clsx": "^2.1.1",
@@ -22,7 +24,7 @@
     "react-dom": "^18",
     "react-qr-code": "^2.0.18",
     "react-webcam": "^7.2.0",
-    "resend": "^6.6.0",
+    "resend": "^6.7.0",
     "tailwind-merge": "^3.4.0",
     "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
